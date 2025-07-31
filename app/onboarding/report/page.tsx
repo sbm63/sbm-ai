@@ -45,8 +45,10 @@ export default function InterviewReportPage() {
 
     async function fetchData() {
       try {
-        const [candRes, reportRes] = await Promise.all([
+        const [candRes] = await Promise.all([
           fetch(`/api/candidates/${candidateId}`),
+        ]);
+        const [reportRes] = await Promise.all([
           fetch(`/api/reports/${candidateId}`),
         ]);
 
