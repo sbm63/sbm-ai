@@ -49,7 +49,7 @@ export default function InterviewReportPage() {
           fetch(`/api/candidates/${candidateId}`),
         ]);
         const [reportRes] = await Promise.all([
-          fetch(`/api/reports/${candidateId}`),
+          fetch(`/api/onboarding/reports/${candidateId}`),
         ]);
 
         if (!candRes.ok) {
