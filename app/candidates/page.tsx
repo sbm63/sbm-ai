@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Candidate = {
+  id:string;
   candidateId: number;
   firstName: string;
   lastName: string;

@@ -195,7 +195,7 @@ export default function InterviewReportPage() {
                 </div>
                 <span className="font-bold text-gray-700">{pq.score}/10</span>
               </div>
-              <p className="text-gray-700 italic mb-3">"{pq.answer}"</p>
+              <p className="text-gray-700 italic mb-3">{pq.answer}</p>
               <p className="text-gray-800">{pq.comment}</p>
             </div>
           ))}
