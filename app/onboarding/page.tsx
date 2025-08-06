@@ -120,7 +120,7 @@ export default function OnboardingPage() {
   };
 
   const evaluateInterview = async () => {
-    router.push(`/onboarding/report?candidateId=${candidateId}`);
+    router.push(`/onboarding/reports?candidateId=${candidateId}`);
   };
 
   const handleNext = async () => {
