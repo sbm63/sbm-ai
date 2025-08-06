@@ -49,7 +49,7 @@ export default function InterviewReportPage() {
           fetch(`/api/candidates/${candidateId}`),
         ]);
         const [reportRes] = await Promise.all([
-          fetch(`/api/onboarding/reports/${candidateId}`),
+          fetch(`/api/reports/${candidateId}`),
         ]);
 
         if (!candRes.ok) {
@@ -137,15 +137,15 @@ export default function InterviewReportPage() {
         <div className="mb-4">
           <span className="text-lg font-medium">Score:</span>
           <span className="ml-2 inline-block bg-indigo-100 text-indigo-700 font-semibold px-3 py-1 rounded-full">
-            {report.overall_score}/100
+            {report?.overall_score}/100
           </span>
         </div>
-        <p className="text-gray-700 mb-6">{report.summary}</p>
+        <p className="text-gray-700 mb-6">{report?.summary}</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <h3 className="font-medium text-gray-800 mb-2">Strengths</h3>
             <ul className="list-disc list-inside space-y-1">
-              {report.strengths.map((s, i) => (
+              {report?.strengths?.map((s, i) => (
                 <li key={i}>{s}</li>
               ))}
             </ul>
@@ -153,7 +153,7 @@ export default function InterviewReportPage() {
           <div>
             <h3 className="font-medium text-gray-800 mb-2">Improvements</h3>
             <ul className="list-disc list-inside space-y-1">
-              {report.improvements.map((imp, idx) => (
+              {report?.improvements?.map((imp, idx) => (
                 <li key={idx}>{imp}</li>
               ))}
             </ul>
@@ -163,14 +163,14 @@ export default function InterviewReportPage() {
           <span className="font-medium">Hire Recommendation:</span>
           <span
             className={`ml-2 inline-block px-3 py-1 rounded-full font-semibold ${
-              report.hire_recommendation === 'YES'
+              report?.hire_recommendation === 'YES'
                 ? 'bg-green-100 text-green-700'
-                : report.hire_recommendation === 'NO'
+                : report?.hire_recommendation === 'NO'
                 ? 'bg-red-100 text-red-700'
                 : 'bg-yellow-100 text-yellow-700'
             }`}
           >
-            {report.hire_recommendation}
+            {report?.hire_recommendation}
           </span>
         </div>
       </section>
@@ -181,7 +181,7 @@ export default function InterviewReportPage() {
           Per-Question Feedback
         </h2>
         <div className="space-y-6">
-          {report.per_question.map((pq, idx) => (
+          {report?.per_question?.map((pq, idx) => (
             <div
               key={idx}
               className="bg-white border-l-4 border-indigo-500 rounded-lg shadow-sm p-6 hover:shadow-md transition"

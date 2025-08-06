@@ -109,7 +109,7 @@ export default function OnboardingPage() {
   const persistAnswer = async (qIdx: number, answer: string) => {
     qaRef.current[qIdx].answer = answer.trim();
 
-    await fetch('/api/save-answer', {
+    await fetch('/api/interviews', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
