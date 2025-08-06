@@ -96,7 +96,7 @@ export default function CandidatesPage() {
                     <button
                       onClick={() =>
                         router.push(
-                          `/candidates/start-interview?id=${cand.candidateId}`,
+                          `/start-interview?id=${cand.id}`,
                         )
                       }
                       className="text-indigo-600 hover:text-indigo-900"

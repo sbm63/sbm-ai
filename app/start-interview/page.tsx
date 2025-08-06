@@ -9,20 +9,29 @@ type Candidate = {
   lastName: string;
   email: string;
   phone?: string;
-  resume?: string;
+};
+
+type Feedback = {
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendation: string;
 };
 
 export default function StartInterviewPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const idParam = searchParams.get('id');
-  const candidateId = idParam;
+  const candidateId = idParam!;
 
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [validated, setValidated] = useState(false);
   const [validating, setValidating] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+
   const [meetingJoined, setMeetingJoined] = useState(false);
 
   useEffect(() => {
@@ -50,17 +59,17 @@ export default function StartInterviewPage() {
     setValidating(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/validate-resume?candidateId=${candidateId}`,
-      );
+      const res = await fetch(`/api/start-interview/${candidateId}`);
       const data = await res.json();
-      if (data.valid) {
+
+      if (data.feedback) {
+        setFeedback(data.feedback);
         setValidated(true);
       } else {
-        setError(data.message || 'Validation failed');
+        throw new Error(data.message || 'Validation failed');
       }
-    } catch {
-      setError('Error validating resume');
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setValidating(false);
     }
@@ -89,6 +98,7 @@ export default function StartInterviewPage() {
 
   return (
     <div className="max-w-md mx-auto mt-12 p-6 bg-white rounded-lg shadow relative">
+      {/* Join Meet button */}
       <div className="absolute top-4 right-4">
         <button
           onClick={handleJoinMeeting}
@@ -105,6 +115,7 @@ export default function StartInterviewPage() {
 
       <h1 className="text-2xl font-bold mb-4">Start Interview</h1>
 
+      {/* Candidate info */}
       <div className="space-y-2 mb-6 text-left">
         <p>
           <span className="font-medium">Name:</span> {candidate.firstName}{' '}
@@ -120,8 +131,10 @@ export default function StartInterviewPage() {
         )}
       </div>
 
-      <p className="text-red-600 mb-4">{error}</p>
+      {/* Error message */}
+      {error && <p className="text-red-600 mb-4">{error}</p>}
 
+      {/* Actions */}
       <div className="flex gap-4">
         <button
           onClick={handleValidate}
@@ -143,7 +156,6 @@ export default function StartInterviewPage() {
 
         <button
           onClick={handleStart}
-          // disabled={!meetingJoined}
           className={`flex-1 py-2 rounded-md font-medium transition ${
             meetingJoined
               ? 'bg-green-600 text-white hover:bg-green-500'
@@ -153,6 +165,39 @@ export default function StartInterviewPage() {
           Start Interview
         </button>
       </div>
+
+      {/* 📄 Feedback Card */}
+      {feedback && (
+        <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-md">
+          <h2 className="text-xl font-semibold mb-2">Feedback Summary</h2>
+          <p className="mb-4">{feedback.summary}</p>
+
+          <div className="mb-4">
+            <h3 className="font-medium">Strengths:</h3>
+            <ul className="list-disc list-inside pl-4">
+              {feedback.strengths.length > 0 ? (
+                feedback.strengths.map((s, i) => <li key={i}>{s}</li>)
+              ) : (
+                <li className="text-gray-500">None identified.</li>
+              )}
+            </ul>
+          </div>
+
+          <div className="mb-4">
+            <h3 className="font-medium">Weaknesses:</h3>
+            <ul className="list-disc list-inside pl-4">
+              {feedback.weaknesses.map((w, i) => (
+                <li key={i}>{w}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-medium">Recommendation:</h3>
+            <p>{feedback.recommendation}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

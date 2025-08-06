@@ -18,7 +18,7 @@ export default function JobProfilesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/create-job')
+    fetch('/api/job-profiles')
       .then((res) => res.json())
       .then((data) => {
         if (data.jobs && data.jobs.length > 0) setJobs(data.jobs);
