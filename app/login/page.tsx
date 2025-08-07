@@ -18,7 +18,7 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/login', {
+      const res = await fetch('/api/user/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -26,7 +26,7 @@ export default function LoginPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
       localStorage.setItem('token', data.token);
-      router.push('/job-profiles');
+      router.push('/');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -71,6 +71,12 @@ export default function LoginPage() {
         </button>
         {error && <p className="text-red-600 mt-2">{error}</p>}
       </form>
+         <button
+        onClick={() => router.push('/signup')}
+        className="w-full mt-4 py-2 bg-green-600 text-white rounded hover:bg-green-500"
+      >
+        Sign Up
+      </button>
     </div>
   );
 }
