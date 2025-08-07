@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Download } from 'lucide-react';
+
 
 type Candidate = {
   id: number;
@@ -21,7 +22,7 @@ export default function InterviewReportPage() {
   const searchParams = useSearchParams();
   const idParam = searchParams.get('candidateId');
   const candidateId = idParam;
-
+  const router = useRouter();
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [responses, setResponses] = useState<QAItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +84,12 @@ export default function InterviewReportPage() {
 
   const handleDownload = () => window.print();
 
+    const handleGenerate = () => {
+    if (candidateId) {
+      router.push(`/onboarding/feedback?candidateId=${candidateId}`);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto mt-16 p-8 bg-white rounded-2xl shadow-lg">
       {/* Header */}
@@ -90,12 +97,20 @@ export default function InterviewReportPage() {
         <h1 className="text-3xl font-extrabold text-indigo-700">
           Interview Responses
         </h1>
+       <div className="flex space-x-4">
+        <button
+          onClick={handleGenerate}
+          className="flex items-center gap-2 bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-500 transition"
+        >
+          Generate Feedback
+        </button>
         <button
           onClick={handleDownload}
           className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-500 transition"
         >
           <Download size={18} /> Download
         </button>
+      </div>
       </div>
 
       {/* Candidate Details */}
