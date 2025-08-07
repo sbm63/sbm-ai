@@ -99,9 +99,19 @@ export default function CandidatesPage() {
                           `/start-interview?id=${cand.id}`,
                         )
                       }
-                      className="text-indigo-600 hover:text-indigo-900"
+                      className="text-indigo-600 hover:text-indigo-900  border-2 px-1"
                     >
-                      Schedule Interview
+                      Interview
+                    </button>
+                    <button
+                      onClick={() =>
+                        router.push(
+                          `/onboarding/reports?candidateId=${cand.id}`,
+                        )
+                      }
+                      className="ms-2 text-indigo-600 hover:text-indigo-900 border-2 px-1"
+                    >
+                    Report
                     </button>
                   </td>
                 </tr>
