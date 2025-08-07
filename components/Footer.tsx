@@ -7,7 +7,7 @@ export default function Footer() {
 
   return (
     <footer>
-      <div className="custom-screen mx-auto px-4">
+      <div className="custom-screen mx-auto mt-10 px-4">
         <div className=" py-4 border-t flex flex-col md:flex-row items-center justify-between">
           <p className="text-gray-600 text-sm">
             © {year} Diskiao AI. All rights reserved.
