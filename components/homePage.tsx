@@ -3,7 +3,14 @@
 import Image from 'next/image';
 import NavLink from './NavLink';
 
-let heroImages = ['/1.png', '/6.png', '/3.png'];
+let heroImages = [
+  '/ai1.jpg',
+  '/ai2.png',
+  '/ai3.jpeg',
+  '/ai4.jpeg',
+  '/ai5.jpeg',
+  '/ai6.jpeg',
+];
 
 export default function HomePage() {
   return (

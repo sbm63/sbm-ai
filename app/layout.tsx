@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import PlausibleProvider from 'next-plausible';
 import AuthGuard from '@/components/AuthGuard';
+import Footer from '@/components/Footer';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -48,12 +49,11 @@ export default function RootLayout({
         <PlausibleProvider domain="qrgpt.io" />
       </head>
       <body className={inter.className}>
-      
-          <Navbar />
-            <AuthGuard>
+        <Navbar />
+        <AuthGuard>
           <main>{children}</main>
-          {/* <Analytics />
-        <Footer /> */}
+
+          <Footer />
         </AuthGuard>
       </body>
     </html>
