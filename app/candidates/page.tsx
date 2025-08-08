@@ -31,7 +31,7 @@ export default function CandidatesPage() {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto mt-12 p-6">
+    <div className="max-w-6xl mx-auto mt-12 p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Candidates</h1>
         <div className="flex gap-4">

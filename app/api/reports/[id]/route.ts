@@ -16,7 +16,7 @@ export async function GET(
       FROM interviews
       WHERE candidate_id = ${candidateId}
     `
-    console.log(rows)
+    console.log(JSON.stringify(rows))
     if (rows.length === 0) {
       return NextResponse.json(
         { error: 'Interview not found' },

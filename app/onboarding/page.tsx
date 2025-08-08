@@ -2,14 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Video,
-  VideoOff,
-  Mic,
-  MicOff,
-  ArrowRight,
-  ArrowLeft,
-} from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, ArrowRight, ArrowLeft } from 'lucide-react';
 
 const questions = [
   'Tell us about your background.',
@@ -39,15 +32,11 @@ export default function OnboardingPage() {
   const recognitionRef = useRef<any>(null);
   const audioActiveRef = useRef(false);
 
-  // 1️⃣ Properly initialize with each question baked in
-  const qaRef = useRef<QA[]>(
-    questions.map((q) => ({ question: q, answer: '' })),
-  );
+  const qaRef = useRef<QA[]>(questions.map((q) => ({ question: q, answer: '' })));
 
   useEffect(() => {
     const SpeechRecognitionClass =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognitionClass) return;
 
     const recog = new SpeechRecognitionClass();
@@ -105,10 +94,8 @@ export default function OnboardingPage() {
     setAudioActive(false);
   };
 
-  // 2️⃣ Send the full QA array every time
   const persistAnswer = async (qIdx: number, answer: string) => {
     qaRef.current[qIdx].answer = answer.trim();
-
     await fetch('/api/interviews', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -146,15 +133,13 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4 max-w-4xl mx-auto">
-      <div className="max-w-xl mx-auto mt-12 text-center space-y-6 p-6 bg-white rounded-lg shadow">
+    <div className="flex flex-col lg:flex-row gap-6 p-4 max-w-6xl mx-auto">
+      {/* Left: Calling Section */}
+      <div className="flex-1 bg-white rounded-lg shadow p-6 flex flex-col items-center">
         {formattedRole && (
-          <h2 className="text-xl font-semibold text-gray-700">
-            {formattedRole} Interview
-          </h2>
+          <h2 className="text-xl font-semibold text-gray-700 mb-4">{formattedRole} Interview</h2>
         )}
-
-        <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden mx-auto">
+        <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
           <video
             ref={videoRef}
             autoPlay
@@ -168,47 +153,46 @@ export default function OnboardingPage() {
             </div>
           )}
         </div>
-
-        <div className="flex justify-center gap-6">
+        <div className="flex justify-center gap-6 mt-4">
           <button
             onClick={cameraActive ? stopCamera : startCamera}
             className="p-3 rounded-full bg-gray-100 hover:bg-gray-200"
-            aria-label={cameraActive ? 'Stop Camera' : 'Start Camera'}
           >
             {!cameraActive ? <VideoOff size={24} /> : <Video size={24} />}
           </button>
           <button
             onClick={audioActive ? stopListening : startListening}
             className="p-3 rounded-full bg-gray-100 hover:bg-gray-200"
-            aria-label={audioActive ? 'Stop Listening' : 'Start Listening'}
           >
             {!audioActive ? <MicOff size={24} /> : <Mic size={24} />}
           </button>
         </div>
+      </div>
 
+      {/* Right: Question Section */}
+      <div className="flex-1 bg-white rounded-lg shadow p-6 flex flex-col">
         <h1 className="text-2xl font-bold">
           Question {currentQ + 1} of {questions.length}
         </h1>
-        <p className="text-lg">{questions[currentQ]}</p>
+        <p className="text-lg mt-2">{questions[currentQ]}</p>
 
-        <div className="flex justify-between gap-4 mt-4">
+        <div className="flex justify-between gap-4 mt-6">
           <button
             onClick={handlePrevious}
             disabled={currentQ === 0}
-            className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded font-medium transition ${
+            className={`inline-flex items-center gap-2 px-6 py-3 rounded font-medium transition ${
               currentQ === 0
                 ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                 : 'bg-gray-200 text-black hover:bg-gray-300'
             }`}
           >
-            <ArrowLeft size={20} />
-            Previous
+            <ArrowLeft size={20} /> Previous
           </button>
 
-          <button
+        <button
             onClick={handleNext}
             disabled={audioActive}
-            className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded font-medium transition ${
+            className={`inline-flex items-center gap-2 px-6 py-3 rounded font-medium transition ${
               audioActive
                 ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                 : 'bg-blue-700 text-white hover:bg-blue-600'
@@ -219,12 +203,12 @@ export default function OnboardingPage() {
           </button>
         </div>
 
-        <div className="text-left">
+        <div className="text-left mt-6">
           <h2 className="font-semibold mb-2">Transcript:</h2>
           <textarea
             value={transcript}
-            readOnly
-            rows={4}
+            onChange={(e) => setTranscript(e.target.value)}
+            rows={6}
             className="w-full border rounded p-2"
           />
         </div>

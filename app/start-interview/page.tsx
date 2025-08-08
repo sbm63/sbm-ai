@@ -18,6 +18,13 @@ type Feedback = {
   recommendation: string;
 };
 
+type JobProfile = {
+  id: string;
+  title: string; // display name
+  role?: string; // optional
+  createdAt?: string;
+};
+
 export default function StartInterviewPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,19 +35,24 @@ export default function StartInterviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [profiles, setProfiles] = useState<JobProfile[]>([]);
+  const [profilesLoading, setProfilesLoading] = useState(true);
+  const [profilesError, setProfilesError] = useState<string | null>(null);
+  const [selectedProfileId, setSelectedProfileId] = useState<string>('');
+
   const [validated, setValidated] = useState(false);
   const [validating, setValidating] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   const [meetingJoined, setMeetingJoined] = useState(false);
 
+  // Load candidate
   useEffect(() => {
     if (!candidateId) {
       setError('No candidate ID provided');
       setLoading(false);
       return;
     }
-
     fetch(`/api/candidates/${candidateId}`)
       .then(async (res) => {
         if (!res.ok) {
@@ -54,12 +66,43 @@ export default function StartInterviewPage() {
       .finally(() => setLoading(false));
   }, [candidateId]);
 
+  // Load job profiles — expects { jobs: JobProfile[] }
+  useEffect(() => {
+    setProfilesLoading(true);
+    setProfilesError(null);
+    fetch('/api/job-profiles')
+      .then(async (res) => {
+        if (!res.ok) {
+          const { error } = await res.json().catch(() => ({}));
+          throw new Error(error || `Status ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(({ jobs }: { jobs: JobProfile[] }) => {
+        const list = jobs || [];
+        setProfiles(list);
+        if (list.length === 1) {
+          setSelectedProfileId(list[0].id); // auto-select if only one
+        }
+      })
+      .catch((err: any) => setProfilesError(err.message))
+      .finally(() => setProfilesLoading(false));
+  }, []);
+
   const handleValidate = async () => {
     if (validated) return;
+    if (!selectedProfileId) {
+      setError('Please select a job profile before validating.');
+      return;
+    }
     setValidating(true);
     setError(null);
     try {
-      const res = await fetch(`/api/start-interview/${candidateId}`);
+      const res = await fetch(
+        `/api/start-interview/${candidateId}?profileId=${encodeURIComponent(
+          selectedProfileId,
+        )}`,
+      );
       const data = await res.json();
 
       if (data.feedback) {
@@ -81,7 +124,13 @@ export default function StartInterviewPage() {
   };
 
   const handleStart = () => {
-    router.push(`/onboarding?candidateId=${candidateId}`);
+    if (!selectedProfileId) {
+      setError('Please select a job profile to start the interview.');
+      return;
+    }
+    return router.push(
+      `/onboarding?candidateId=${candidateId}&profileId=${selectedProfileId}`,
+    );
   };
 
   if (loading) {
@@ -95,6 +144,9 @@ export default function StartInterviewPage() {
       </div>
     );
   }
+
+  const canValidate = !!selectedProfileId && !validating && !validated;
+  const canStart = !!selectedProfileId;
 
   return (
     <div className="max-w-md mx-auto mt-12 p-6 bg-white rounded-lg shadow relative">
@@ -131,6 +183,31 @@ export default function StartInterviewPage() {
         )}
       </div>
 
+      {/* Job Profile dropdown */}
+      <div className="mb-4">
+        <label className="block mb-1 font-medium">Job Profile</label>
+        <select
+          value={selectedProfileId}
+          onChange={(e) => {
+            setSelectedProfileId(e.target.value);
+            setValidated(false);
+            setFeedback(null);
+          }}
+          className="w-full border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          disabled={profilesLoading}
+        >
+          <option value="">
+            {profilesLoading ? 'Loading profiles…' : 'Select a profile'}
+          </option>
+          {profiles.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title}
+            </option>
+          ))}
+        </select>
+        {profilesError && <p className="text-red-600 mt-2">{profilesError}</p>}
+      </div>
+
       {/* Error message */}
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
@@ -138,26 +215,27 @@ export default function StartInterviewPage() {
       <div className="flex gap-4">
         <button
           onClick={handleValidate}
-          disabled={validating || validated}
+          disabled={!canValidate}
           className={`flex-1 py-2 rounded-md font-medium transition ${
             validated
               ? 'bg-green-500 text-white cursor-default'
-              : validating
-              ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-500'
+              : canValidate
+              ? 'bg-blue-600 text-white hover:bg-blue-500'
+              : 'bg-gray-300 text-gray-600 cursor-not-allowed'
           }`}
         >
           {validated
             ? 'Resume Validated'
             : validating
-            ? 'Validating...'
+            ? 'Validating…'
             : 'Validate Resume'}
         </button>
 
         <button
           onClick={handleStart}
+          disabled={!canStart}
           className={`flex-1 py-2 rounded-md font-medium transition ${
-            meetingJoined
+            canStart
               ? 'bg-green-600 text-white hover:bg-green-500'
               : 'bg-gray-300 text-gray-600 cursor-not-allowed'
           }`}
