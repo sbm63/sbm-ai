@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Download } from 'lucide-react';
 
-
 type Candidate = {
   id: number;
   firstName: string;
@@ -39,7 +38,7 @@ export default function InterviewReportPage() {
       try {
         const [candRes, respRes] = await Promise.all([
           fetch(`/api/candidates/${candidateId}`),
-          fetch(`/api/reports/${candidateId}`)
+          fetch(`/api/reports/${candidateId}`),
         ]);
 
         if (!candRes.ok) {
@@ -53,7 +52,7 @@ export default function InterviewReportPage() {
 
         const { candidate } = await candRes.json();
         // our report route now returns { report: QAItem[] }
-        const { report } = await respRes.json() as { report: QAItem[] };
+        const { report } = (await respRes.json()) as { report: QAItem[] };
 
         setCandidate(candidate);
         setResponses(report);
@@ -69,7 +68,9 @@ export default function InterviewReportPage() {
 
   if (loading) {
     return (
-      <p className="p-8 text-center text-lg text-gray-600">Loading responses…</p>
+      <p className="p-8 text-center text-lg text-gray-600">
+        Loading responses…
+      </p>
     );
   }
   if (error || !candidate) {
@@ -84,7 +85,7 @@ export default function InterviewReportPage() {
 
   const handleDownload = () => window.print();
 
-    const handleGenerate = () => {
+  const handleGenerate = () => {
     if (candidateId) {
       router.push(`/onboarding/feedback?candidateId=${candidateId}`);
     }
@@ -97,20 +98,20 @@ export default function InterviewReportPage() {
         <h1 className="text-3xl font-extrabold text-indigo-700">
           Interview Responses
         </h1>
-       <div className="flex space-x-4">
-        <button
-          onClick={handleGenerate}
-          className="flex items-center gap-2 bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-500 transition"
-        >
-          Generate Feedback
-        </button>
-        <button
-          onClick={handleDownload}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-500 transition"
-        >
-          <Download size={18} /> Download
-        </button>
-      </div>
+        <div className="flex space-x-4">
+          <button
+            onClick={handleGenerate}
+            className="flex items-center gap-2 bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-500 transition"
+          >
+            Generate Feedback
+          </button>
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-500 transition"
+          >
+            <Download size={18} /> Download
+          </button>
+        </div>
       </div>
 
       {/* Candidate Details */}
@@ -144,7 +145,12 @@ export default function InterviewReportPage() {
             <li key={idx} className="space-y-2">
               <p className="font-medium text-gray-800">Q: {item.question}</p>
               <p className="text-gray-700 ml-4">
-                A: {item.answer || <span className="italic text-gray-400">No answer provided</span>}
+                A:{' '}
+                {item.answer || (
+                  <span className="italic text-gray-400">
+                    No answer provided
+                  </span>
+                )}
               </p>
             </li>
           ))}

@@ -2,7 +2,14 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Video, VideoOff, Mic, MicOff, ArrowRight, ArrowLeft } from 'lucide-react';
+import {
+  Video,
+  VideoOff,
+  Mic,
+  MicOff,
+  ArrowRight,
+  ArrowLeft,
+} from 'lucide-react';
 
 const questions = [
   'Tell us about your background.',
@@ -32,11 +39,14 @@ export default function OnboardingPage() {
   const recognitionRef = useRef<any>(null);
   const audioActiveRef = useRef(false);
 
-  const qaRef = useRef<QA[]>(questions.map((q) => ({ question: q, answer: '' })));
+  const qaRef = useRef<QA[]>(
+    questions.map((q) => ({ question: q, answer: '' })),
+  );
 
   useEffect(() => {
     const SpeechRecognitionClass =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
     if (!SpeechRecognitionClass) return;
 
     const recog = new SpeechRecognitionClass();
@@ -137,7 +147,9 @@ export default function OnboardingPage() {
       {/* Left: Calling Section */}
       <div className="flex-1 bg-white rounded-lg shadow p-6 flex flex-col items-center">
         {formattedRole && (
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">{formattedRole} Interview</h2>
+          <h2 className="text-xl font-semibold text-gray-700 mb-4">
+            {formattedRole} Interview
+          </h2>
         )}
         <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
           <video
@@ -189,7 +201,7 @@ export default function OnboardingPage() {
             <ArrowLeft size={20} /> Previous
           </button>
 
-        <button
+          <button
             onClick={handleNext}
             disabled={audioActive}
             className={`inline-flex items-center gap-2 px-6 py-3 rounded font-medium transition ${

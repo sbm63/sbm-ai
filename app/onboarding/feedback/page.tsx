@@ -43,7 +43,7 @@ export default function InterviewFeedbackPage() {
           const data = await res.json();
           throw new Error(data.error || `Fetch failed (${res.status})`);
         }
-        const { report } = await res.json() as { report: Report };
+        const { report } = (await res.json()) as { report: Report };
         setFeedback(report);
       } catch (e: any) {
         setError(e.message);
@@ -59,7 +59,9 @@ export default function InterviewFeedbackPage() {
 
   if (loading) {
     return (
-      <p className="p-8 text-center text-lg text-gray-600">Generating feedback…</p>
+      <p className="p-8 text-center text-lg text-gray-600">
+        Generating feedback…
+      </p>
     );
   }
   if (error) {

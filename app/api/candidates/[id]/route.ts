@@ -4,7 +4,7 @@ import { db } from '@vercel/postgres';
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
     // Ensure the table exists (optional once migrations are in place)
@@ -39,7 +39,7 @@ export async function GET(
     if (rows.length === 0) {
       return NextResponse.json(
         { error: 'Candidate not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -48,7 +48,7 @@ export async function GET(
     console.error('[GET_CANDIDATE]', err);
     return NextResponse.json(
       { error: 'Failed to fetch candidate' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

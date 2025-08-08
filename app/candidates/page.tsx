@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Candidate = {
-  id:string;
+  id: string;
   candidateId: number;
   firstName: string;
   lastName: string;
@@ -95,9 +95,7 @@ export default function CandidatesPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() =>
-                        router.push(
-                          `/start-interview?id=${cand.id}`,
-                        )
+                        router.push(`/start-interview?id=${cand.id}`)
                       }
                       className="text-indigo-600 hover:text-indigo-900  border-2 px-1"
                     >
@@ -111,7 +109,7 @@ export default function CandidatesPage() {
                       }
                       className="ms-2 text-indigo-600 hover:text-indigo-900 border-2 px-1"
                     >
-                    Report
+                      Report
                     </button>
                   </td>
                 </tr>

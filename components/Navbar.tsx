@@ -52,10 +52,20 @@ const Navbar = () => {
     document.body.classList.toggle('overflow-hidden');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setIsLoggedIn(false);
-    router.push('/login');
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/user/logout', {
+        method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
+      });
+    } catch (e) {
+      // optional: console.error(e);
+    } finally {
+      setIsLoggedIn(false); // if you still track this locally
+      router.replace('/login');
+      router.refresh(); // ensures UI re-renders without auth
+    }
   };
 
   return (

@@ -1,14 +1,13 @@
 // app/api/interviews/route.ts
 
-
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@vercel/postgres'
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@vercel/postgres';
 
 export async function POST(req: NextRequest) {
   const { candidateId, userResponse } = (await req.json()) as {
-    candidateId: string
-    userResponse: { question: string; answer: string }[]
-  }
+    candidateId: string;
+    userResponse: { question: string; answer: string }[];
+  };
 
   try {
     // 1) Ensure table exists, with a UNIQUE constraint on candidate_id
@@ -21,7 +20,7 @@ export async function POST(req: NextRequest) {
         updated_at TIMESTAMPTZ DEFAULT now(),
         UNIQUE(candidate_id)
       );
-    `
+    `;
 
     // 2) Upsert: insert or update by candidate_id
     const { rows } = await db.sql`
@@ -40,15 +39,15 @@ export async function POST(req: NextRequest) {
         responses         AS "userResponse",
         created_at        AS "createdAt",
         updated_at        AS "updatedAt";
-    `
+    `;
 
-    const interview = rows[0]
-    return NextResponse.json({ interview }, { status: 200 })
+    const interview = rows[0];
+    return NextResponse.json({ interview }, { status: 200 });
   } catch (err) {
-    console.error('[UPSERT_INTERVIEW]', err)
+    console.error('[UPSERT_INTERVIEW]', err);
     return NextResponse.json(
       { error: 'Failed to save or update interview' },
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }

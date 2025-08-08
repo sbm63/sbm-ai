@@ -20,16 +20,17 @@ export default function HomePage() {
           {/* Left: Text */}
           <div className="lg:w-3/5 space-y-5">
             <h1 className="text-4xl text-gray-800 font-extrabold sm:text-6xl leading-tight">
-              Transform Your Hiring Process with <span className="text-indigo-600">Diskiao AI</span>
+              Transform Your Hiring Process with{' '}
+              <span className="text-indigo-600">Diskiao AI</span>
             </h1>
             <h5 className="max-w-xl text-lg text-gray-700">
               AI that elevates recruiters—working with you, not replacing you.
             </h5>
 
             <p className="max-w-xl text-gray-600">
-              Streamline your technical interviews with Diskiao AI’s advanced platform.
-              Get instant insights, comprehensive evaluations, and make data-driven
-              hiring decisions.
+              Streamline your technical interviews with Diskiao AI’s advanced
+              platform. Get instant insights, comprehensive evaluations, and
+              make data-driven hiring decisions.
             </p>
 
             <div className="flex flex-wrap items-center gap-x-3 font-medium text-sm">
@@ -56,12 +57,7 @@ export default function HomePage() {
                 key={idx}
                 className="relative h-56 w-full overflow-hidden rounded-lg shadow-lg hover:scale-[1.02] transition-transform duration-300"
               >
-                <Image
-                  alt="image"
-                  src={image}
-                  fill
-                  className="object-cover"
-                />
+                <Image alt="image" src={image} fill className="object-cover" />
               </div>
             ))}
           </div>
@@ -75,19 +71,18 @@ export default function HomePage() {
                 key={idx}
                 className="relative h-48 w-full overflow-hidden rounded-lg shadow-md hover:scale-[1.02] transition-transform duration-300"
               >
-                <Image
-                  alt="image"
-                  src={image}
-                  fill
-                  className="object-cover"
-                />
+                <Image alt="image" src={image} fill className="object-cover" />
               </div>
             ))}
           </div>
           <p className="mt-8 text-center max-w-2xl mx-auto text-gray-700 text-lg">
-            Our platform empowers recruiters with <span className="font-semibold text-indigo-600">AI-driven insights</span>, 
-            enabling faster, fairer, and more accurate hiring decisions. From resume 
-            screening to final feedback, Diskiao AI streamlines your process end to end.
+            Our platform empowers recruiters with{' '}
+            <span className="font-semibold text-indigo-600">
+              AI-driven insights
+            </span>
+            , enabling faster, fairer, and more accurate hiring decisions. From
+            resume screening to final feedback, Diskiao AI streamlines your
+            process end to end.
           </p>
         </div>
       </div>

@@ -25,7 +25,8 @@ export default function SignupPage() {
     setLoading(true);
     setError(null);
 
-    const { firstName, lastName, email, phone, password, confirmPassword } = form;
+    const { firstName, lastName, email, phone, password, confirmPassword } =
+      form;
     if (!firstName || !lastName || !email || !phone || !password) {
       setError('All fields are required');
       setLoading(false);

@@ -45,7 +45,7 @@ export async function GET() {
     console.error('[GET_JOBS]', err);
     return NextResponse.json(
       { error: 'Failed to fetch jobs' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -57,8 +57,10 @@ export async function POST(req: NextRequest) {
 
     if (!title || !description) {
       return NextResponse.json(
-        { error: 'Missing required fields: title and description are required' },
-        { status: 400 }
+        {
+          error: 'Missing required fields: title and description are required',
+        },
+        { status: 400 },
       );
     }
 
@@ -85,7 +87,7 @@ export async function POST(req: NextRequest) {
     console.error('[CREATE_JOB_API]', err);
     return NextResponse.json(
       { error: 'Failed to create job' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

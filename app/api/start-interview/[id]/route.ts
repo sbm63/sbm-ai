@@ -7,7 +7,6 @@ import OpenAI from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } },
@@ -36,7 +35,7 @@ export async function GET(
     // const buf = Buffer.from(resumeBase64, 'base64');
     // const { text: resumeText } = await pdf(buf);
     console.log('Resume Text:', resumeBase64);
-  
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.3,
@@ -49,7 +48,6 @@ export async function GET(
       ],
       response_format: { type: 'json_object' },
     });
-
 
     const raw = completion.choices[0]?.message?.content ?? '{}';
     const feedback = JSON.parse(raw);

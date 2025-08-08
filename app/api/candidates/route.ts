@@ -38,7 +38,7 @@ export async function GET() {
     console.error('[GET_CANDIDATES]', err);
     return NextResponse.json(
       { error: 'Failed to fetch candidates' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -46,29 +46,24 @@ export async function GET() {
 // POST /api/candidates → create one (multipart/form-data)
 export async function POST(req: NextRequest) {
   try {
-    const formData    = await req.formData();
-    const firstName   = formData.get('firstName') as string;
-    const lastName    = formData.get('lastName')  as string;
-    const email       = formData.get('email')     as string;
-    const phone       = (formData.get('phone')    as string) || '';
-    const resumeFile  = formData.get('resume');
+    const formData = await req.formData();
+    const firstName = formData.get('firstName') as string;
+    const lastName = formData.get('lastName') as string;
+    const email = formData.get('email') as string;
+    const phone = (formData.get('phone') as string) || '';
+    const resumeFile = formData.get('resume');
 
-    if (
-      !firstName ||
-      !lastName  ||
-      !email     ||
-      !(resumeFile instanceof File)
-    ) {
+    if (!firstName || !lastName || !email || !(resumeFile instanceof File)) {
       return NextResponse.json(
         { error: 'firstName, lastName, email and a file are required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // convert file to base64
-    const buffer        = Buffer.from(await resumeFile.arrayBuffer());
-    const resumeBase64  = buffer.toString('base64');
-    const resumeName    = resumeFile.name;
+    const buffer = Buffer.from(await resumeFile.arrayBuffer());
+    const resumeBase64 = buffer.toString('base64');
+    const resumeName = resumeFile.name;
 
     const { rows } = await db.sql`
       INSERT INTO candidates (
@@ -97,7 +92,7 @@ export async function POST(req: NextRequest) {
     console.error('[CREATE_CANDIDATE]', err);
     return NextResponse.json(
       { error: 'Failed to create candidate' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
