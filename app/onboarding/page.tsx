@@ -2,33 +2,26 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Video,
-  VideoOff,
-  Mic,
-  MicOff,
-  ArrowRight,
-  ArrowLeft,
-} from 'lucide-react';
-
-const questions = [
-  'Tell us about your background.',
-  'Why are you interested in this role?',
-  'Describe a challenging project you led.',
-];
+import { Video, VideoOff, Mic, MicOff, ArrowRight, ArrowLeft } from 'lucide-react';
 
 type QA = { question: string; answer: string };
 
 export default function OnboardingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const roleParam = searchParams.get('role') || '';
-  const candidateId = searchParams.get('candidateId') || '';
+
+  const roleParam = (searchParams.get('role') || '').trim();        // slug like "frontend-developer"
+  const jobIdParam = (searchParams.get('id') || searchParams.get('jobId') || '').trim();
+  const candidateId = (searchParams.get('candidateId') || '').trim();
 
   const formattedRole = roleParam
     .split('-')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
+
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [loadingQs, setLoadingQs] = useState(true);
+  const [qError, setQError] = useState<string>('');
 
   const [currentQ, setCurrentQ] = useState(0);
   const [cameraActive, setCameraActive] = useState(false);
@@ -39,14 +32,59 @@ export default function OnboardingPage() {
   const recognitionRef = useRef<any>(null);
   const audioActiveRef = useRef(false);
 
-  const qaRef = useRef<QA[]>(
-    questions.map((q) => ({ question: q, answer: '' })),
-  );
+  // Store Q&A as you go
+  const qaRef = useRef<QA[]>([]);
 
+  // Fetch job questions
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        setLoadingQs(true);
+        setQError('');
+
+        let res: Response | null = null;
+
+        if (jobIdParam) {
+          res = await fetch(`/api/job-profiles/${jobIdParam}`, { cache: 'no-store' });
+        } else if (roleParam) {
+          // fallback if your API supports role-based lookup
+          const q = encodeURIComponent(roleParam);
+          res = await fetch(`/api/job-profiles?role=${q}`, { cache: 'no-store' });
+        }
+
+        if (!res) throw new Error('Missing job identifier.');
+        if (!res.ok) throw new Error(`Failed to load questions (${res.status})`);
+
+        const data = await res.json();
+        const raw = Array.isArray(data?.questions) ? data.questions : [];
+
+        // Normalize to string list
+        const qTexts: string[] = raw
+          .map((it: any) => (typeof it === 'string' ? it : it?.question))
+          .filter((s: any) => typeof s === 'string' && s.trim().length > 0);
+
+        if (!ignore) {
+          setQuestions(qTexts);
+          qaRef.current = qTexts.map((q) => ({ question: q, answer: '' }));
+          setCurrentQ(0);
+          setTranscript('');
+        }
+      } catch (e: any) {
+        if (!ignore) setQError(e?.message || 'Unable to load questions');
+      } finally {
+        if (!ignore) setLoadingQs(false);
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [jobIdParam, roleParam]);
+
+  // Speech-to-text + camera setup
   useEffect(() => {
     const SpeechRecognitionClass =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognitionClass) return;
 
     const recog = new SpeechRecognitionClass();
@@ -105,6 +143,7 @@ export default function OnboardingPage() {
   };
 
   const persistAnswer = async (qIdx: number, answer: string) => {
+    if (!questions.length) return;
     qaRef.current[qIdx].answer = answer.trim();
     await fetch('/api/interviews', {
       method: 'POST',
@@ -131,6 +170,7 @@ export default function OnboardingPage() {
       await evaluateInterview();
     }
   };
+
   const handlePrevious = async () => {
     if (audioActive) stopListening();
     await persistAnswer(currentQ, transcript);
@@ -146,19 +186,13 @@ export default function OnboardingPage() {
     <div className="flex flex-col lg:flex-row gap-6 p-4 max-w-6xl mx-auto">
       {/* Left: Calling Section */}
       <div className="flex-1 bg-white rounded-lg shadow p-6 flex flex-col items-center">
-        {formattedRole && (
+        {(formattedRole || jobIdParam) && (
           <h2 className="text-xl font-semibold text-gray-700 mb-4">
-            {formattedRole} Interview
+            {formattedRole || 'Interview'}
           </h2>
         )}
         <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          />
+          <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
           {!cameraActive && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
               <VideoOff size={48} className="text-gray-500" />
@@ -183,47 +217,57 @@ export default function OnboardingPage() {
 
       {/* Right: Question Section */}
       <div className="flex-1 bg-white rounded-lg shadow p-6 flex flex-col">
-        <h1 className="text-2xl font-bold">
-          Question {currentQ + 1} of {questions.length}
-        </h1>
-        <p className="text-lg mt-2">{questions[currentQ]}</p>
+        {loadingQs ? (
+          <p className="text-sm text-gray-500">Loading questions…</p>
+        ) : qError ? (
+          <p className="text-sm text-red-600">{qError}</p>
+        ) : questions.length === 0 ? (
+          <p className="text-sm text-gray-600">No questions found for this job.</p>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold">
+              Question {currentQ + 1} of {questions.length}
+            </h1>
+            <p className="text-lg mt-2">{questions[currentQ]}</p>
 
-        <div className="flex justify-between gap-4 mt-6">
-          <button
-            onClick={handlePrevious}
-            disabled={currentQ === 0}
-            className={`inline-flex items-center gap-2 px-6 py-3 rounded font-medium transition ${
-              currentQ === 0
-                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                : 'bg-gray-200 text-black hover:bg-gray-300'
-            }`}
-          >
-            <ArrowLeft size={20} /> Previous
-          </button>
+            <div className="flex justify-between gap-4 mt-6">
+              <button
+                onClick={handlePrevious}
+                disabled={currentQ === 0}
+                className={`inline-flex items-center gap-2 px-6 py-3 rounded font-medium transition ${
+                  currentQ === 0
+                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                    : 'bg-gray-200 text-black hover:bg-gray-300'
+                }`}
+              >
+                <ArrowLeft size={20} /> Previous
+              </button>
 
-          <button
-            onClick={handleNext}
-            disabled={audioActive}
-            className={`inline-flex items-center gap-2 px-6 py-3 rounded font-medium transition ${
-              audioActive
-                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                : 'bg-blue-700 text-white hover:bg-blue-600'
-            }`}
-          >
-            {currentQ < questions.length - 1 ? 'Next Question' : 'Finish'}
-            <ArrowRight size={20} />
-          </button>
-        </div>
+              <button
+                onClick={handleNext}
+                disabled={audioActive}
+                className={`inline-flex items-center gap-2 px-6 py-3 rounded font-medium transition ${
+                  audioActive
+                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                    : 'bg-blue-700 text-white hover:bg-blue-600'
+                }`}
+              >
+                {currentQ < questions.length - 1 ? 'Next Question' : 'Finish'}
+                <ArrowRight size={20} />
+              </button>
+            </div>
 
-        <div className="text-left mt-6">
-          <h2 className="font-semibold mb-2">Transcript:</h2>
-          <textarea
-            value={transcript}
-            onChange={(e) => setTranscript(e.target.value)}
-            rows={6}
-            className="w-full border rounded p-2"
-          />
-        </div>
+            <div className="text-left mt-6">
+              <h2 className="font-semibold mb-2">Transcript:</h2>
+              <textarea
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                rows={6}
+                className="w-full border rounded p-2"
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

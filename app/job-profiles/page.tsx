@@ -7,6 +7,7 @@ export default function JobProfilesPage() {
   const router = useRouter();
 
   type JobProfile = {
+    id:string;
     title: string;
     department: string;
     location: string;
@@ -91,12 +92,12 @@ export default function JobProfilesPage() {
                     <button
                       onClick={() =>
                         router.push(
-                          `/job-profiles/edit-job-profile?index=${idx}`,
+                          `/job-profiles/questions?id=${job.id}`,
                         )
                       }
                       className="text-indigo-600 hover:text-indigo-900"
                     >
-                      Edit
+                      Add Questions
                     </button>
                   </td>
                 </tr>

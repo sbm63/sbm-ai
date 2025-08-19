@@ -129,7 +129,7 @@ export default function StartInterviewPage() {
       return;
     }
     return router.push(
-      `/onboarding?candidateId=${candidateId}&profileId=${selectedProfileId}`,
+      `/onboarding?candidateId=${candidateId}&jobId=${selectedProfileId}`,
     );
   };
 
