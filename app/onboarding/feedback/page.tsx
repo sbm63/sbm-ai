@@ -38,7 +38,7 @@ export default function InterviewFeedbackPage() {
 
     async function fetchFeedback() {
       try {
-        const res = await fetch(`/api/candidate/${candidateId}/feedback`);
+        const res = await fetch(`/api/reports/${candidateId}/feedback`);
         if (!res.ok) {
           const data = await res.json();
           throw new Error(data.error || `Fetch failed (${res.status})`);
