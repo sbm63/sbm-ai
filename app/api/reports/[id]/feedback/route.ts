@@ -11,20 +11,22 @@ export async function GET(
   { params }: { params: { id: string } },
 ) {
   const { id: candidateId } = params;
-
+  console.log('candidateId', candidateId);
   try {
     // 1) Load stored responses from candidates table
-    const { rows } = await db.sql`
+     const { rows } = await db.sql`
       SELECT responses
-      FROM candidates
-      WHERE id = ${candidateId}
+      FROM interviews
+      WHERE candidate_id = ${candidateId}
     `;
+    console.log(JSON.stringify(rows));
     if (rows.length === 0) {
       return NextResponse.json(
         { error: 'Candidate not found' },
         { status: 404 },
       );
     }
+    console.log('rows', rows);
     const responses = rows[0].responses;
 
     // 2) Call OpenAI to generate feedback
