@@ -1,9 +1,9 @@
-// app/api/candidates/[id]/route.ts
+// app/api/start-interview/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@vercel/postgres';
-// import pdf from 'pdf-parse';
+import pdfParse from 'pdf-parse';
 import OpenAI from 'openai';
-// import { Buffer } from 'buffer';
+import { Buffer } from 'buffer';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
@@ -31,10 +31,39 @@ export async function GET(
 
     const { resume: resumeBase64 } = rows[0];
 
-    // 2) Decode & parse PDF to plain text
-    // const buf = Buffer.from(resumeBase64, 'base64');
-    // const { text: resumeText } = await pdf(buf);
-    console.log('Resume Text:', resumeBase64);
+    // Decode & parse PDF to plain text
+    let resumeText = '';
+    try {
+      const buf = Buffer.from(resumeBase64, 'base64');
+      
+      // Check if it's a PDF or text file
+      const isPDF = buf.slice(0, 4).toString() === '%PDF';
+      
+      if (isPDF) {
+        const pdfData = await pdfParse(buf);
+        resumeText = pdfData.text;
+      } else {
+        // If it's stored as text (from text-create API)
+        resumeText = buf.toString('utf8');
+      }
+      
+      console.log('📄 Resume text length:', resumeText.length);
+      console.log('📄 First 300 chars:', resumeText.substring(0, 300));
+      
+    } catch (parseError) {
+      console.error('❌ Failed to parse resume:', parseError);
+      return NextResponse.json(
+        { error: 'Failed to parse resume file' },
+        { status: 500 }
+      );
+    }
+
+    if (!resumeText.trim()) {
+      return NextResponse.json(
+        { error: 'Resume content is empty or could not be extracted' },
+        { status: 400 }
+      );
+    }
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -42,22 +71,50 @@ export async function GET(
       messages: [
         {
           role: 'system',
-          content: `You are an expert resume reviewer. Return ONLY valid JSON: { summary, strengths, weaknesses, recommendation }.`,
+          content: `You are an expert resume reviewer and career advisor. Analyze the resume and provide detailed feedback.
+          
+          Return ONLY valid JSON with this structure:
+          {
+            "summary": "Brief 2-3 sentence summary of the candidate's profile and experience level",
+            "strengths": ["List of 3-5 key strengths based on the resume"],
+            "weaknesses": ["List of 2-4 areas for improvement or missing elements"],
+            "recommendation": "Overall recommendation for hiring potential with specific reasoning",
+            "experienceLevel": "junior|mid-level|senior",
+            "keySkills": ["List of technical and soft skills identified"]
+          }`,
         },
-        { role: 'user', content: `resumeBase64:\n\n${resumeBase64}` },
+        { 
+          role: 'user', 
+          content: `Please analyze this resume and provide comprehensive feedback:\n\n${resumeText.substring(0, 6000)}` 
+        },
       ],
       response_format: { type: 'json_object' },
     });
 
     const raw = completion.choices[0]?.message?.content ?? '{}';
-    const feedback = JSON.parse(raw);
-    return NextResponse.json({ feedback });
+    console.log('🤖 AI feedback response:', raw);
+    
+    let feedback;
+    try {
+      feedback = JSON.parse(raw);
+    } catch (jsonError) {
+      console.error('❌ Failed to parse AI response:', jsonError);
+      return NextResponse.json(
+        { error: 'Failed to parse AI feedback response' },
+        { status: 500 }
+      );
+    }
+    
+    return NextResponse.json({ 
+      success: true,
+      feedback,
+      resumeLength: resumeText.length 
+    });
 
-    // return NextResponse.json({ candidate: rows[0] });
-  } catch (err) {
-    console.error('[GET_CANDIDATE]', err);
+  } catch (err: any) {
+    console.error('[RESUME_VALIDATION_ERROR]', err);
     return NextResponse.json(
-      { error: 'Failed to fetch candidate' },
+      { error: 'Failed to validate resume', details: err.message },
       { status: 500 },
     );
   }

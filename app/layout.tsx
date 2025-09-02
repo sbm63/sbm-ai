@@ -8,11 +8,11 @@ import Footer from '@/components/Footer';
 
 const inter = Inter({ subsets: ['latin'] });
 
-let title = 'QrGPT - QR Code Generator';
-let description = 'Generate your AI QR Code in seconds';
-let url = 'https://www.qrgpt.io';
-let ogimage = 'https://www.qrgpt.io/og-image.png';
-let sitename = 'qrGPT.io';
+let title = 'Diskiao AI - Interview Management Platform';
+let description = 'AI-powered interview platform for candidate assessment';
+let url = 'https://www.diskiao.ai';
+let ogimage = 'https://www.diskiao.ai/og-image.png';
+let sitename = 'Diskiao AI';
 
 export const metadata: Metadata = {
   metadataBase: new URL(url),
@@ -46,7 +46,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <PlausibleProvider domain="qrgpt.io" />
+        <PlausibleProvider domain="diskiao.ai" />
       </head>
       <body className={inter.className}>
         <Navbar />

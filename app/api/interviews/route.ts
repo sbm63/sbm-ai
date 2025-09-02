@@ -3,6 +3,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@vercel/postgres';
 
+export async function GET(req: NextRequest) {
+  const candidateId = req.headers.get('candidate-id');
+  
+  if (!candidateId) {
+    return NextResponse.json({ error: 'candidate-id header is required' }, { status: 400 });
+  }
+
+  try {
+    const { rows } = await db.sql`
+      SELECT 
+        id,
+        candidate_id AS "candidateId",
+        responses,
+        created_at AS "createdAt",
+        updated_at AS "updatedAt"
+      FROM interviews 
+      WHERE candidate_id = ${candidateId};
+    `;
+
+    if (rows.length === 0) {
+      return NextResponse.json({ interview: null }, { status: 200 });
+    }
+
+    const interview = rows[0];
+    return NextResponse.json({ interview }, { status: 200 });
+  } catch (err) {
+    console.error('[GET_INTERVIEW]', err);
+    return NextResponse.json(
+      { error: 'Failed to retrieve interview' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   const { candidateId, userResponse } = (await req.json()) as {
     candidateId: string;
