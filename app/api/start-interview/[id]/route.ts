@@ -1,6 +1,9 @@
+// app/api/start-interview/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@vercel/postgres';
+import pdfParse from 'pdf-parse';
 import OpenAI from 'openai';
+import { Buffer } from 'buffer';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
@@ -203,8 +206,39 @@ export async function GET(
 
     const { resume: resumeBase64, resumeFileName } = rows[0];
 
-    console.log(`📄 Processing resume: ${resumeFileName}`);
-    console.log(`📊 Resume data length: ${resumeBase64?.length || 0} characters`);
+    // Decode & parse PDF to plain text
+    let resumeText = '';
+    try {
+      const buf = Buffer.from(resumeBase64, 'base64');
+      
+      // Check if it's a PDF or text file
+      const isPDF = buf.slice(0, 4).toString() === '%PDF';
+      
+      if (isPDF) {
+        const pdfData = await pdfParse(buf);
+        resumeText = pdfData.text;
+      } else {
+        // If it's stored as text (from text-create API)
+        resumeText = buf.toString('utf8');
+      }
+      
+      console.log('📄 Resume text length:', resumeText.length);
+      console.log('📄 First 300 chars:', resumeText.substring(0, 300));
+      
+    } catch (parseError) {
+      console.error('❌ Failed to parse resume:', parseError);
+      return NextResponse.json(
+        { error: 'Failed to parse resume file' },
+        { status: 500 }
+      );
+    }
+
+    if (!resumeText.trim()) {
+      return NextResponse.json(
+        { error: 'Resume content is empty or could not be extracted' },
+        { status: 400 }
+      );
+    }
 
     let resumeText: string;
 
@@ -257,64 +291,50 @@ export async function GET(
       messages: [
         {
           role: 'system',
-          content: `You are an expert resume reviewer and HR analyst. Analyze the provided resume text and return ONLY valid JSON with this exact structure: 
-          {
-            "summary": "Brief professional summary highlighting key qualifications (2-3 sentences)",
-            "strengths": ["specific strength 1 with evidence", "specific strength 2 with evidence", "specific strength 3 with evidence", "specific strength 4 with evidence"],
-            "weaknesses": ["constructive improvement area 1", "constructive improvement area 2"],
-            "recommendation": "Overall assessment with clear hiring recommendation and reasoning (include a rating like 'Strong Hire', 'Hire', 'Maybe', or 'No Hire')"
-          }
+          content: `You are an expert resume reviewer and career advisor. Analyze the resume and provide detailed feedback.
           
-          Focus on: technical skills, experience, career progression, education, achievements, and areas for improvement.
-          Be specific and evidence-based in your analysis.`,
+          Return ONLY valid JSON with this structure:
+          {
+            "summary": "Brief 2-3 sentence summary of the candidate's profile and experience level",
+            "strengths": ["List of 3-5 key strengths based on the resume"],
+            "weaknesses": ["List of 2-4 areas for improvement or missing elements"],
+            "recommendation": "Overall recommendation for hiring potential with specific reasoning",
+            "experienceLevel": "junior|mid-level|senior",
+            "keySkills": ["List of technical and soft skills identified"]
+          }`,
         },
         { 
           role: 'user', 
-          content: `Analyze this resume:\n\n${resumeText.substring(0, 12000)}` // Increased character limit
+          content: `Please analyze this resume and provide comprehensive feedback:\n\n${resumeText.substring(0, 6000)}` 
         },
       ],
       response_format: { type: 'json_object' },
     });
 
     const raw = completion.choices[0]?.message?.content ?? '{}';
+    console.log('🤖 AI feedback response:', raw);
     
+    let feedback;
     try {
-      const feedback = JSON.parse(raw);
-      
-      // Validate response structure
-      if (!feedback.summary || !Array.isArray(feedback.strengths) || !Array.isArray(feedback.weaknesses) || !feedback.recommendation) {
-        throw new Error('Invalid response structure from AI');
-      }
-      
-      console.log('✅ AI analysis completed successfully');
-      
-      return NextResponse.json({ 
-        feedback,
-        metadata: {
-          resumeFileName,
-          textLength: resumeText.length,
-          processed: new Date().toISOString()
-        }
-      });
-      
-    } catch (parseError) {
-      console.error('💥 Failed to parse AI response:', parseError);
+      feedback = JSON.parse(raw);
+    } catch (jsonError) {
+      console.error('❌ Failed to parse AI response:', jsonError);
       return NextResponse.json(
-        { 
-          error: 'AI service returned invalid response',
-          details: process.env.NODE_ENV === 'development' ? raw : 'Invalid AI response'
-        },
-        { status: 500 },
+        { error: 'Failed to parse AI feedback response' },
+        { status: 500 }
       );
     }
+    
+    return NextResponse.json({ 
+      success: true,
+      feedback,
+      resumeLength: resumeText.length 
+    });
 
   } catch (err: any) {
-    console.error('💥 Unexpected error:', err);
+    console.error('[RESUME_VALIDATION_ERROR]', err);
     return NextResponse.json(
-      { 
-        error: 'Failed to process resume',
-        details: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-      },
+      { error: 'Failed to validate resume', details: err.message },
       { status: 500 },
     );
   }

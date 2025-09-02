@@ -8,6 +8,7 @@ node_modules
 
 # testing
 /coverage
+# Note: /test directory is required for pdf-parse package during build
 
 # next.js
 /.next/

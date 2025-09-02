@@ -47,6 +47,13 @@ export default function CandidatesPage() {
           >
             New Candidate
           </button>
+
+          <button
+            onClick={() => router.push('/candidates/upload-candidate')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-500"
+          >
+            Upload Resume
+          </button>
         </div>
       </div>
 

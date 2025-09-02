@@ -149,7 +149,7 @@ export default function StartInterviewPage() {
   const canStart = !!selectedProfileId;
 
   return (
-    <div className="max-w-md mx-auto mt-12 p-6 bg-white rounded-lg shadow relative">
+    <div className="max-w-3xl mx-auto mt-12 p-6 bg-white rounded-lg shadow relative">
       {/* Join Meet button */}
       <div className="absolute top-4 right-4">
         <button

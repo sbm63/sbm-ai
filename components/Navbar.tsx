@@ -31,7 +31,7 @@ const Navbar = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     setIsLoggedIn(!!token);
-  });
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
