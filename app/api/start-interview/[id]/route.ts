@@ -51,7 +51,7 @@ async function parsePDFSimple(base64Data: string): Promise<string> {
     
     // Look for text objects in PDF
     const textRegex = /\((.*?)\)/g;
-    const streamRegex = /stream\s*(.*?)\s*endstream/;
+    const streamRegex = /stream\s*(.*?)\s*endstream/g;
     
     let extractedText = '';
     let match;
@@ -96,44 +96,20 @@ async function parsePDFSimple(base64Data: string): Promise<string> {
   }
 }
 
-// Method 3: Node.js child process approach (if you have pdftotext installed)
-async function parsePDFWithPdftotext(base64Data: string): Promise<string> {
+// Method 3: Traditional pdf-parse library
+async function parsePDFWithLibrary(buffer: Buffer): Promise<string> {
   try {
-    const { exec } = require('child_process');
-    const fs = require('fs');
-    const path = require('path');
-    const { promisify } = require('util');
-    const execAsync = promisify(exec);
-    
-    // Create temporary files
-    const tempDir = '/tmp';
-    const tempPdfPath = path.join(tempDir, `temp_${Date.now()}.pdf`);
-    const tempTxtPath = path.join(tempDir, `temp_${Date.now()}.txt`);
-    
-    // Write PDF to temporary file
-    const buffer = Buffer.from(base64Data, 'base64');
-    fs.writeFileSync(tempPdfPath, buffer);
-    
-    // Use pdftotext command
-    await execAsync(`pdftotext "${tempPdfPath}" "${tempTxtPath}"`);
-    
-    // Read the extracted text
-    const extractedText = fs.readFileSync(tempTxtPath, 'utf-8');
-    
-    // Clean up temporary files
-    fs.unlinkSync(tempPdfPath);
-    fs.unlinkSync(tempTxtPath);
-    
-    return extractedText;
+    const pdfData = await pdfParse(buffer);
+    return pdfData.text;
   } catch (error: any) {
-    console.error('pdftotext error:', error.message);
-    throw new Error(`pdftotext parsing failed: ${error.message}`);
+    console.error('pdf-parse library error:', error.message);
+    throw new Error(`pdf-parse library failed: ${error.message}`);
   }
 }
 
 // Main PDF parsing function with multiple fallbacks
-async function parsePDFSafely(base64Data: string): Promise<string> {
-  const buffer = Buffer.from(base64Data, 'base64');
+async function parsePDFSafely(resumeBase64: string): Promise<string> {
+  const buffer = Buffer.from(resumeBase64, 'base64');
   
   // Validate it's a PDF
   const pdfHeader = buffer.subarray(0, 8).toString();
@@ -143,11 +119,20 @@ async function parsePDFSafely(base64Data: string): Promise<string> {
   
   console.log('🔧 Attempting to parse PDF, size:', buffer.length, 'bytes');
   
-
+  // Try method 1: Traditional pdf-parse library first
+  try {
+    const text = await parsePDFWithLibrary(buffer);
+    if (text && text.trim().length > 50) {
+      console.log('✅ pdf-parse library successful, extracted', text.length, 'characters');
+      return text.trim();
+    }
+  } catch (error: any) {
+    console.log('❌ pdf-parse library failed:', error.message);
+  }
   
   // Try method 2: Simple extraction
   try {
-    const text = await parsePDFSimple(base64Data);
+    const text = await parsePDFSimple(resumeBase64);
     if (text && text.length > 50) {
       console.log('✅ Simple parsing successful, extracted', text.length, 'characters');
       return text;
@@ -156,26 +141,15 @@ async function parsePDFSafely(base64Data: string): Promise<string> {
     console.log('❌ Simple parsing failed:', error.message);
   }
 
-  // Try method 1: External API (most reliable)
+  // Try method 3: External API (most reliable but requires internet)
   try {
-    const text = await parsePDFWithAPI(base64Data);
+    const text = await parsePDFWithAPI(resumeBase64);
     if (text && text.trim().length > 50) {
       console.log('✅ API parsing successful, extracted', text.length, 'characters');
       return text.trim();
     }
   } catch (error: any) {
     console.log('❌ API method failed:', error.message);
-  }
-  
-  // Try method 3: pdftotext (if available on server)
-  try {
-    const text = await parsePDFWithPdftotext(base64Data);
-    if (text && text.length > 50) {
-      console.log('✅ pdftotext parsing successful, extracted', text.length, 'characters');
-      return text;
-    }
-  } catch (error: any) {
-    console.log('❌ pdftotext method failed:', error.message);
   }
   
   // If all methods fail, throw error
@@ -204,7 +178,7 @@ export async function GET(
       );
     }
 
-    const { resume: resumeBase64, resumeFileName } = rows[0];
+    const { resume: resumeBase64 } = rows[0];
 
     // Decode & parse PDF to plain text
     let resumeText = '';
@@ -215,50 +189,24 @@ export async function GET(
       const isPDF = buf.slice(0, 4).toString() === '%PDF';
       
       if (isPDF) {
-        const pdfData = await pdfParse(buf);
-        resumeText = pdfData.text;
+        // Use the enhanced PDF parsing with multiple fallbacks
+        resumeText = await parsePDFSafely(resumeBase64);
       } else {
         // If it's stored as text (from text-create API)
         resumeText = buf.toString('utf8');
       }
       
       console.log('📄 Resume text length:', resumeText.length);
-      console.log('📄 First 300 chars:', resumeText.substring(0, 300));
-      
-    } catch (parseError) {
-      console.error('❌ Failed to parse resume:', parseError);
-      return NextResponse.json(
-        { error: 'Failed to parse resume file' },
-        { status: 500 }
-      );
-    }
-
-    if (!resumeText.trim()) {
-      return NextResponse.json(
-        { error: 'Resume content is empty or could not be extracted' },
-        { status: 400 }
-      );
-    }
-
-    let resumeText: string;
-
-    try {
-      // Parse the PDF to extract text
-      resumeText = await parsePDFSafely(resumeBase64);
-      
-      console.log(`✅ Text extraction successful: ${resumeText.length} characters`);
-       console.log(`✅ Text extraction successful: ${resumeText.substring(0, 12000)} `);
-      // Log first 300 characters for debugging (only in development)
       if (process.env.NODE_ENV === 'development') {
-        console.log('📝 Text preview:', resumeText.substring(0, 300).replace(/\s+/g, ' ') + '...');
+        console.log('📄 First 300 chars:', resumeText.substring(0, 300));
       }
       
-    } catch (pdfError: any) {
-      console.error('💥 All PDF parsing methods failed:', pdfError.message);
+    } catch (parseError: any) {
+      console.error('❌ Failed to parse resume:', parseError);
       return NextResponse.json(
         { 
           error: 'Failed to extract text from PDF resume',
-          details: pdfError.message,
+          details: parseError.message,
           suggestions: [
             'Try uploading the resume as a .txt or .docx file',
             'Ensure the PDF contains selectable text (not just images)',
