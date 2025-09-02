@@ -6,16 +6,10 @@ const nextConfig = {
   //     'g4yqcv8qdhf169fk.public.blob.vercel-storage.com',
   //   ],
   // },
-  webpack: (config, { isServer }) => {
-    // Fix for pdf-parse fs issues in browser
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-      };
-    }
-    return config;
-  },
+  // webpack: (config, { isServer }) => {
+  //   // No longer needed since pdf-parse was removed
+  //   return config;
+  // },
 };
 
 module.exports = nextConfig;

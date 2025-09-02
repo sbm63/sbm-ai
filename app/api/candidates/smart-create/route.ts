@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@vercel/postgres';
 import { Buffer } from 'buffer';
 import OpenAI from 'openai';
-import pdfParse from 'pdf-parse';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
@@ -26,32 +25,49 @@ export async function POST(req: NextRequest) {
       type: resumeFile.type
     });
     
-    // Extract text using pdf-parse
+    // Convert file to base64 for AI analysis
     const buffer = Buffer.from(await resumeFile.arrayBuffer());
-    const data = await pdfParse(buffer);
+    const base64Data = buffer.toString('base64');
     
-    console.log('📄 Extracted text length:', data.text.length);
-    console.log('📄 First 500 chars:', data.text.substring(0, 500));
+    console.log('📄 File converted to base64, size:', buffer.length, 'bytes');
     
-    // Extract candidate info using AI
+    // Extract candidate info using AI with vision
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.1,
       messages: [
         {
           role: 'system',
-          content: `Extract candidate information from resume text. Return JSON:
+          content: `You are an expert at analyzing resumes. Extract candidate information from the provided PDF document.
+          
+          Return ONLY valid JSON with this exact structure:
           {
-            "firstName": "first name",
-            "lastName": "last name", 
-            "email": "email address",
-            "phone": "phone number"
+            "firstName": "first name from resume",
+            "lastName": "last name from resume", 
+            "email": "email address from resume",
+            "phone": "phone number from resume"
           }
-          REQUIRED: firstName, lastName, and email must not be empty.`
+          
+          IMPORTANT:
+          - firstName, lastName, and email are REQUIRED and must not be empty
+          - If phone is not found, use empty string
+          - Look carefully for contact information in headers, footers, and contact sections
+          - Be precise with name extraction (avoid titles like Mr., Dr., etc.)`
         },
         {
           role: 'user',
-          content: `Extract from this resume:\n\n${data.text.substring(0, 8000)}`
+          content: [
+            {
+              type: 'text',
+              text: 'Please analyze this resume PDF and extract the candidate information:'
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:application/pdf;base64,${base64Data}`
+              }
+            }
+          ]
         }
       ],
       response_format: { type: 'json_object' }
@@ -66,8 +82,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { 
           error: 'Could not extract required information',
-          extractedText: data.text.substring(0, 1000),
-          aiResponse: candidateInfo
+          aiResponse: candidateInfo,
+          hint: 'Make sure the PDF contains clear contact information'
         },
         { status: 400 }
       );
