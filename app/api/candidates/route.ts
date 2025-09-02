@@ -97,47 +97,122 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Convert to buffer and extract text
+      // Convert PDF to buffer and try different text extraction approaches
       const buffer = Buffer.from(await resumeFile.arrayBuffer());
       const resumeBase64 = buffer.toString('base64');
       
-      // Simple text extraction from PDF
-      const pdfString = buffer.toString('latin1');
-      const textRegex = /\((.*?)\)/g;
-      let extractedText = '';
-      let match;
+      console.log('📄 Attempting advanced PDF text extraction');
       
-      while ((match = textRegex.exec(pdfString)) !== null) {
-        const text = match[1];
-        if (text && text.length > 1 && /[a-zA-Z@]/.test(text)) {
-          extractedText += text + ' ';
+      // Try multiple encoding approaches to extract text
+      let extractedText = '';
+      
+      // Method 1: Try UTF-8 extraction
+      try {
+        const utf8String = buffer.toString('utf8');
+        const utf8Matches = utf8String.match(/[a-zA-Z0-9@._-]+/g);
+        if (utf8Matches) {
+          extractedText += utf8Matches.join(' ') + ' ';
         }
+      } catch (e) {
+        console.log('UTF-8 extraction failed');
       }
       
-      extractedText = extractedText.replace(/\s+/g, ' ').trim();
+      // Method 2: ASCII extraction with better filtering
+      const asciiString = buffer.toString('ascii');
+      const readableChars = asciiString.match(/[a-zA-Z0-9@._\-\s]{2,}/g);
+      if (readableChars) {
+        extractedText += readableChars.join(' ') + ' ';
+      }
+      
+      // Method 3: Look for specific patterns in binary data
+      const binaryString = buffer.toString('binary');
+      
+      // Extract email patterns
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+      const emails = binaryString.match(emailRegex);
+      if (emails) {
+        extractedText += emails.join(' ') + ' ';
+      }
+      
+      // Extract phone patterns
+      const phoneRegex = /[\+]?[1-9]?[\d\s\-\(\)]{7,15}/g;
+      const phones = binaryString.match(phoneRegex);
+      if (phones) {
+        extractedText += phones.filter(p => /\d{3,}/.test(p)).join(' ') + ' ';
+      }
+      
+      // Method 4: Extract words from PDF objects
+      const wordRegex = /\b[A-Za-z]{2,}\b/g;
+      const words = binaryString.match(wordRegex);
+      if (words) {
+        // Filter meaningful words (not PDF commands)
+        const meaningfulWords = words.filter(word => 
+          word.length > 2 && 
+          word.length < 50 && 
+          !/^(obj|endobj|stream|endstream|xref|trailer|startxref|PDF)$/i.test(word)
+        );
+        extractedText += meaningfulWords.slice(0, 100).join(' ') + ' ';
+      }
+      
+      // Clean and normalize text
+      extractedText = extractedText
+        .replace(/\s+/g, ' ')
+        .replace(/[^\w\s@._-]/g, ' ')
+        .trim();
       
       console.log('📄 Extracted text length:', extractedText.length);
-      console.log('📄 First 500 chars:', extractedText.substring(0, 500));
+      console.log('📄 Sample extracted text:', extractedText.substring(0, 500));
       
-      // Extract candidate info using AI
+      // Check if extraction was successful enough
+      const hasEmail = /@/.test(extractedText);
+      const hasWords = extractedText.split(' ').filter(w => w.length > 2).length > 5;
+      
+      if (!hasEmail && !hasWords) {
+        console.log('❌ Text extraction failed, falling back to manual entry mode');
+        return NextResponse.json(
+          { 
+            error: 'Unable to automatically extract information from this PDF. Please use the manual "Create Candidate" option instead.',
+            suggestion: 'The PDF format is not compatible with automatic extraction. You can manually create the candidate by going to "New Candidate" and entering the information yourself.',
+            fileName: resumeFile.name
+          },
+          { status: 400 }
+        );
+      }
+      
+      // Use OpenAI with enhanced prompting for better extraction
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        temperature: 0.1,
+        model: 'gpt-4o',
+        max_tokens: 1000,
+        temperature: 0,
         messages: [
           {
             role: 'system',
-            content: `Extract candidate information from resume text. Return JSON:
-            {
-              "firstName": "first name",
-              "lastName": "last name", 
-              "email": "email address",
-              "phone": "phone number"
-            }
-            REQUIRED: firstName, lastName, and email must not be empty.`
+            content: `You are an expert resume parser. Extract candidate information from the provided text that was extracted from a PDF resume.
+
+EXTRACTION GUIDELINES:
+1. Names: Look for capitalized words that could be first/last names, often at the beginning
+2. Emails: Look for patterns with @ symbol and domain extensions
+3. Phones: Look for digit sequences that could be phone numbers
+4. Be flexible with fragmented text - piece together information intelligently
+5. If filename contains a name (like "resume_john_doe.pdf"), use it as backup
+
+Return JSON format:
+{
+  "firstName": "first name or empty string",
+  "lastName": "last name or empty string", 
+  "email": "email address or empty string",
+  "phone": "phone number or empty string"
+}
+
+IMPORTANT: Only return the JSON object, no other text.`
           },
           {
             role: 'user',
-            content: `Extract from this resume:\n\n${extractedText.substring(0, 8000)}`
+            content: `Resume filename: ${resumeFile.name}
+
+Extracted text: "${extractedText}"
+
+Extract the candidate's firstName, lastName, email, and phone number. If the extracted text is fragmented, try to infer information from patterns and the filename.`
           }
         ],
         response_format: { type: 'json_object' }
@@ -148,11 +223,10 @@ export async function POST(req: NextRequest) {
       const candidateInfo = JSON.parse(raw);
       
       if (!candidateInfo.firstName || !candidateInfo.lastName || !candidateInfo.email) {
-        console.log('❌ Missing fields:', candidateInfo);
+        console.log('❌ Missing required fields:', candidateInfo);
         return NextResponse.json(
           { 
-            error: 'Could not extract required information',
-            extractedText: extractedText.substring(0, 1000),
+            error: 'Could not extract required candidate information from resume. Please ensure the resume contains clear name and email information.',
             aiResponse: candidateInfo
           },
           { status: 400 }
