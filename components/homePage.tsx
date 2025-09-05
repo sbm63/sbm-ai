@@ -34,10 +34,7 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-wrap items-center gap-4 font-medium">
-              <NavLink
-                href="/candidates"
-                className="btn-primary"
-              >
+              <NavLink href="/candidates" className="btn-primary">
                 Start Screening Candidates
               </NavLink>
               <NavLink

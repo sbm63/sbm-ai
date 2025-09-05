@@ -1,13 +1,18 @@
 // app/api/jobs/[jobId]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@vercel/postgres';
+import { executeWithRetry } from '@/lib/db-retry';
 
 async function ensureColumn() {
-  await db.sql`CREATE EXTENSION IF NOT EXISTS pgcrypto;`;
-  await db.sql`
+  await executeWithRetry(
+    () => db.sql`CREATE EXTENSION IF NOT EXISTS pgcrypto;`,
+  );
+  await executeWithRetry(
+    () => db.sql`
     ALTER TABLE jobs
     ADD COLUMN IF NOT EXISTS questions JSONB NOT NULL DEFAULT '[]'::jsonb;
-  `;
+  `,
+  );
 }
 
 type QItem = { question: string; expectedAnswer?: string };
@@ -22,7 +27,10 @@ function cleanQuestions(input: unknown): QItem[] {
     const key = q.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ question: q, expectedAnswer: (it?.expectedAnswer ?? '').toString() });
+    out.push({
+      question: q,
+      expectedAnswer: (it?.expectedAnswer ?? '').toString(),
+    });
   }
   return out;
 }
@@ -37,20 +45,22 @@ function mergeQuestions(existing: QItem[], incoming: QItem[]) {
 // GET /api/jobs/[jobId] -> single job with questions
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
-    console.log(params.id)
+  console.log(params.id);
   try {
-    
     await ensureColumn();
-    const { rows } = await db.sql`
+    const { rows } = await executeWithRetry(
+      () => db.sql`
       SELECT id, title, department, location, type, salary, description,
              created_at AS "createdAt", questions
       FROM jobs
       WHERE id = ${params.id}
       LIMIT 1;
-    `;
-    if (!rows.length) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    `,
+    );
+    if (!rows.length)
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     return NextResponse.json(rows[0]);
   } catch (err) {
     console.error('[GET_JOB]', err);
@@ -72,7 +82,7 @@ export async function GET(
 // }
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   const jobId = params.id;
 
@@ -80,14 +90,22 @@ export async function PATCH(
     await ensureColumn();
     const body = await req.json().catch(() => ({}));
     const {
-      title, department, location, type, salary, description,
-      questions, questionMode,
+      title,
+      department,
+      location,
+      type,
+      salary,
+      description,
+      questions,
+      questionMode,
     } = body || {};
 
     // verify job + get current questions
-    const { rows: currentRows } = await db.sql`
+    const { rows: currentRows } = await executeWithRetry(
+      () => db.sql`
       SELECT questions FROM jobs WHERE id = ${jobId} LIMIT 1;
-    `;
+    `,
+    );
     if (!currentRows.length) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
@@ -105,7 +123,8 @@ export async function PATCH(
     // Use COALESCE so undefined fields don't overwrite
     const qJson = finalQuestions ? JSON.stringify(finalQuestions) : null;
 
-    await db.sql`
+    await executeWithRetry(
+      () => db.sql`
       UPDATE jobs
       SET
         title       = COALESCE(${title}, title),
@@ -116,18 +135,24 @@ export async function PATCH(
         description = COALESCE(${description}, description),
         questions   = COALESCE(${qJson}::jsonb, questions)
       WHERE id = ${jobId};
-    `;
+    `,
+    );
 
-    const { rows } = await db.sql`
+    const { rows } = await executeWithRetry(
+      () => db.sql`
       SELECT id, title, department, location, type, salary, description,
              created_at AS "createdAt", questions
       FROM jobs
       WHERE id = ${jobId}
       LIMIT 1;
-    `;
+    `,
+    );
     return NextResponse.json(rows[0]);
   } catch (err) {
     console.error('[PATCH_JOB]', err);
-    return NextResponse.json({ error: 'Failed to update job' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update job' },
+      { status: 500 },
+    );
   }
 }

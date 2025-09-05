@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@vercel/postgres';
+import { executeWithRetry } from '@/lib/db-retry';
 
 export async function GET(
   _req: NextRequest,
@@ -11,11 +12,13 @@ export async function GET(
   console.log(candidateId);
   try {
     // 1) Load stored responses
-    const { rows } = await db.sql`
+    const { rows } = await executeWithRetry(
+      () => db.sql`
       SELECT responses
       FROM interviews
       WHERE candidate_id = ${candidateId}
-    `;
+    `,
+    );
     console.log(JSON.stringify(rows));
     if (rows.length === 0) {
       return NextResponse.json(

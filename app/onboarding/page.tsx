@@ -2,10 +2,18 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Video, VideoOff, Mic, MicOff, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
+import {
+  Video,
+  VideoOff,
+  Mic,
+  MicOff,
+  ArrowRight,
+  CheckCircle,
+  AlertCircle,
+} from 'lucide-react';
 
-type QA = { 
-  question: string; 
+type QA = {
+  question: string;
   answer: string;
   evaluation?: {
     score: number;
@@ -26,7 +34,11 @@ export default function OnboardingPage() {
   const searchParams = useSearchParams();
 
   const roleParam = (searchParams.get('role') || '').trim();
-  const jobIdParam = (searchParams.get('id') || searchParams.get('jobId') || '').trim();
+  const jobIdParam = (
+    searchParams.get('id') ||
+    searchParams.get('jobId') ||
+    ''
+  ).trim();
   const candidateId = (searchParams.get('candidateId') || '').trim();
 
   const formattedRole = roleParam
@@ -41,17 +53,21 @@ export default function OnboardingPage() {
   const [evaluating, setEvaluating] = useState(false);
   const [interviewComplete, setInterviewComplete] = useState(false);
   const [qError, setQError] = useState<string>('');
-  
+
   // UI State
   const [cameraActive, setCameraActive] = useState(false);
   const [audioActive, setAudioActive] = useState(false);
   const [transcript, setTranscript] = useState('');
-  
+
   // Progress tracking
   const [questionHistory, setQuestionHistory] = useState<QA[]>([]);
-  const [progress, setProgress] = useState<InterviewProgress>({ currentCount: 0, maxQuestions: 8, overallScore: 0 });
+  const [progress, setProgress] = useState<InterviewProgress>({
+    currentCount: 0,
+    maxQuestions: 8,
+    overallScore: 0,
+  });
   const [lastEvaluation, setLastEvaluation] = useState<any>(null);
-  
+
   // Question selection
   const [aiSuggestedQuestion, setAiSuggestedQuestion] = useState<string>('');
   const [customQuestions, setCustomQuestions] = useState<any[]>([]);
@@ -72,8 +88,8 @@ export default function OnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           candidateId,
-          jobProfileId: jobIdParam
-        })
+          jobProfileId: jobIdParam,
+        }),
       });
 
       if (!response.ok) {
@@ -83,7 +99,7 @@ export default function OnboardingPage() {
       const data = await response.json();
       setCurrentQuestion(data.initialQuestion);
       setCustomQuestions(data.customQuestions || []);
-      setProgress(prev => ({ ...prev, maxQuestions: data.maxQuestions }));
+      setProgress((prev) => ({ ...prev, maxQuestions: data.maxQuestions }));
       setInterviewStarted(true);
     } catch (error: any) {
       setQError(error.message || 'Failed to start interview');
@@ -97,12 +113,19 @@ export default function OnboardingPage() {
     if (candidateId && jobIdParam && !interviewStarted && !loadingQuestion) {
       startInterview();
     }
-  }, [candidateId, jobIdParam, interviewStarted, loadingQuestion, startInterview]);
+  }, [
+    candidateId,
+    jobIdParam,
+    interviewStarted,
+    loadingQuestion,
+    startInterview,
+  ]);
 
   // Speech-to-text + camera setup
   useEffect(() => {
     const SpeechRecognitionClass =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
     if (!SpeechRecognitionClass) return;
 
     const recog = new SpeechRecognitionClass();
@@ -171,7 +194,7 @@ export default function OnboardingPage() {
   // Submit answer and get next question
   const submitAnswer = async () => {
     if (!transcript.trim() || !currentQuestion) return;
-    
+
     try {
       setEvaluating(true);
       if (audioActive) stopListening();
@@ -184,8 +207,8 @@ export default function OnboardingPage() {
           currentAnswer: transcript.trim(),
           currentQuestion,
           jobProfileId: jobIdParam,
-          questionHistory
-        })
+          questionHistory,
+        }),
       });
 
       if (!response.ok) {
@@ -194,15 +217,15 @@ export default function OnboardingPage() {
 
       const data = await response.json();
       console.log('🔄 Interview evaluation response:', data);
-      
+
       // Update progress and history
       const newQA: QA = {
         question: currentQuestion,
         answer: transcript.trim(),
-        evaluation: data.evaluation
+        evaluation: data.evaluation,
       };
-      
-      setQuestionHistory(prev => [...prev, newQA]);
+
+      setQuestionHistory((prev) => [...prev, newQA]);
       setProgress(data.progress);
       setLastEvaluation(data.evaluation);
       setTranscript('');
@@ -217,7 +240,7 @@ export default function OnboardingPage() {
         // Show question selection if we have both AI and custom questions
         setAiSuggestedQuestion(data.nextQuestion || '');
         setCustomQuestions(data.customQuestions || []);
-        
+
         if (data.nextQuestion && data.customQuestions?.length > 0) {
           setShowQuestionSelection(true);
         } else if (data.nextQuestion) {
@@ -226,7 +249,6 @@ export default function OnboardingPage() {
           setCurrentQuestion(data.customQuestions[0].question);
         }
       }
-
     } catch (error: any) {
       setQError(error.message || 'Failed to process answer');
     } finally {
@@ -251,7 +273,13 @@ export default function OnboardingPage() {
           </h2>
         )}
         <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
-          <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          />
           {!cameraActive && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
               <VideoOff size={48} className="text-gray-500" />
@@ -279,7 +307,9 @@ export default function OnboardingPage() {
         {loadingQuestion ? (
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-sm text-gray-500">Generating your first question...</p>
+            <p className="text-sm text-gray-500">
+              Generating your first question...
+            </p>
           </div>
         ) : qError ? (
           <div className="text-center py-8">
@@ -300,16 +330,26 @@ export default function OnboardingPage() {
               Thank you for your time. Redirecting to results...
             </p>
             <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-sm">Final Score: <span className="font-bold text-blue-600">{progress.overallScore}/10</span></p>
-              <p className="text-sm">Questions Answered: {progress.currentCount}/{progress.maxQuestions}</p>
+              <p className="text-sm">
+                Final Score:{' '}
+                <span className="font-bold text-blue-600">
+                  {progress.overallScore}/10
+                </span>
+              </p>
+              <p className="text-sm">
+                Questions Answered: {progress.currentCount}/
+                {progress.maxQuestions}
+              </p>
             </div>
           </div>
         ) : showQuestionSelection ? (
           <>
             {/* Question Selection Interface */}
             <h1 className="text-2xl font-bold mb-4">Choose Next Question</h1>
-            <p className="text-gray-600 mb-6">Select which question you&apos;d like to ask next:</p>
-            
+            <p className="text-gray-600 mb-6">
+              Select which question you&apos;d like to ask next:
+            </p>
+
             <div className="space-y-4">
               {/* AI Suggested Question */}
               {aiSuggestedQuestion && (
@@ -319,7 +359,9 @@ export default function OnboardingPage() {
                       AI Suggested
                     </div>
                     <div className="flex-1">
-                      <p className="text-gray-800 font-medium mb-2">{aiSuggestedQuestion}</p>
+                      <p className="text-gray-800 font-medium mb-2">
+                        {aiSuggestedQuestion}
+                      </p>
                       <button
                         onClick={() => selectQuestion(aiSuggestedQuestion)}
                         className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-500 transition"
@@ -333,15 +375,22 @@ export default function OnboardingPage() {
 
               {/* Custom Questions */}
               {customQuestions.map((q, idx) => (
-                <div key={idx} className="border-2 border-green-200 rounded-lg p-4 hover:border-green-400 transition-colors">
+                <div
+                  key={idx}
+                  className="border-2 border-green-200 rounded-lg p-4 hover:border-green-400 transition-colors"
+                >
                   <div className="flex items-start space-x-3">
                     <div className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
                       Custom
                     </div>
                     <div className="flex-1">
-                      <p className="text-gray-800 font-medium mb-2">{q.question}</p>
+                      <p className="text-gray-800 font-medium mb-2">
+                        {q.question}
+                      </p>
                       {q.expectedAnswer && (
-                        <p className="text-gray-500 text-sm mb-2">Expected: {q.expectedAnswer}</p>
+                        <p className="text-gray-500 text-sm mb-2">
+                          Expected: {q.expectedAnswer}
+                        </p>
                       )}
                       <button
                         onClick={() => selectQuestion(q.question)}
@@ -360,13 +409,20 @@ export default function OnboardingPage() {
             {/* Progress Bar */}
             <div className="mb-6">
               <div className="flex justify-between text-sm text-gray-600 mb-2">
-                <span>Question {progress.currentCount + 1} of {progress.maxQuestions}</span>
+                <span>
+                  Question {progress.currentCount + 1} of{' '}
+                  {progress.maxQuestions}
+                </span>
                 <span>Overall Score: {progress.overallScore}/10</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                  style={{ width: `${(progress.currentCount / progress.maxQuestions) * 100}%` }}
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${
+                      (progress.currentCount / progress.maxQuestions) * 100
+                    }%`,
+                  }}
                 ></div>
               </div>
             </div>
@@ -383,10 +439,14 @@ export default function OnboardingPage() {
                   <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
                   Previous Answer Feedback (Score: {lastEvaluation.score}/10)
                 </h3>
-                <p className="text-sm text-gray-700 mb-2">{lastEvaluation.feedback}</p>
+                <p className="text-sm text-gray-700 mb-2">
+                  {lastEvaluation.feedback}
+                </p>
                 {lastEvaluation.strengths?.length > 0 && (
                   <div className="text-xs">
-                    <span className="text-green-600 font-medium">Strengths: </span>
+                    <span className="text-green-600 font-medium">
+                      Strengths:{' '}
+                    </span>
                     {lastEvaluation.strengths.join(', ')}
                   </div>
                 )}

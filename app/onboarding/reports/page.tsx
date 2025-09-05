@@ -45,7 +45,8 @@ export default function InterviewReportPage() {
   const candidateId = idParam;
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [responses, setResponses] = useState<QAItem[]>([]);
-  const [finalEvaluation, setFinalEvaluation] = useState<FinalEvaluation | null>(null);
+  const [finalEvaluation, setFinalEvaluation] =
+    useState<FinalEvaluation | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatingFinal, setGeneratingFinal] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +65,8 @@ export default function InterviewReportPage() {
           fetch(`/api/candidates/${candidateId}`),
           fetch(`/api/interviews`, {
             method: 'GET',
-            headers: candidateId ? { 'candidate-id': candidateId } : {}
-          })
+            headers: candidateId ? { 'candidate-id': candidateId } : {},
+          }),
         ]);
 
         if (!candRes.ok) {
@@ -86,7 +87,9 @@ export default function InterviewReportPage() {
 
         // Try to get existing final evaluation
         try {
-          const evalRes = await fetch(`/api/interviews/final-evaluation?candidateId=${candidateId}`);
+          const evalRes = await fetch(
+            `/api/interviews/final-evaluation?candidateId=${candidateId}`,
+          );
           if (evalRes.ok) {
             const evalData = await evalRes.json();
             if (evalData.evaluation) {
@@ -96,7 +99,6 @@ export default function InterviewReportPage() {
         } catch (e) {
           console.log('No existing final evaluation found');
         }
-
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -128,13 +130,13 @@ export default function InterviewReportPage() {
 
   const generateFinalEvaluation = async () => {
     if (!candidateId || generatingFinal) return;
-    
+
     try {
       setGeneratingFinal(true);
       const response = await fetch('/api/interviews/final-evaluation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidateId })
+        body: JSON.stringify({ candidateId }),
       });
 
       if (!response.ok) {
@@ -153,9 +155,13 @@ export default function InterviewReportPage() {
   // Removed unused handleGenerate function
 
   // Calculate average score from responses
-  const averageScore = responses.length > 0 
-    ? responses.reduce((acc, item) => acc + (item.evaluation?.score || 5), 0) / responses.length 
-    : 0;
+  const averageScore =
+    responses.length > 0
+      ? responses.reduce(
+          (acc, item) => acc + (item.evaluation?.score || 5),
+          0,
+        ) / responses.length
+      : 0;
 
   return (
     <div className="max-w-4xl mx-auto mt-16 p-8 bg-white rounded-2xl shadow-lg">
@@ -215,39 +221,51 @@ export default function InterviewReportPage() {
       {finalEvaluation && (
         <section className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-semibold text-gray-800">Final AI Evaluation</h2>
+            <h2 className="text-2xl font-semibold text-gray-800">
+              Final AI Evaluation
+            </h2>
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm text-gray-600">Overall Score</p>
-                <p className="text-3xl font-bold text-blue-600">{finalEvaluation.overallScore}/10</p>
+                <p className="text-3xl font-bold text-blue-600">
+                  {finalEvaluation.overallScore}/10
+                </p>
               </div>
-              <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                finalEvaluation.recommendation === 'hire' 
-                  ? 'bg-green-100 text-green-800' 
-                  : finalEvaluation.recommendation === 'maybe'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
-              }`}>
+              <div
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  finalEvaluation.recommendation === 'hire'
+                    ? 'bg-green-100 text-green-800'
+                    : finalEvaluation.recommendation === 'maybe'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-red-100 text-red-800'
+                }`}
+              >
                 {finalEvaluation.recommendation.toUpperCase()}
               </div>
             </div>
           </div>
-          
+
           <div className="grid md:grid-cols-2 gap-6 mb-6">
             <div>
               <h3 className="font-semibold text-green-700 mb-2">Strengths</h3>
               <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                {finalEvaluation.detailedFeedback.strengths.map((strength, idx) => (
-                  <li key={idx}>{strength}</li>
-                ))}
+                {finalEvaluation.detailedFeedback.strengths.map(
+                  (strength, idx) => (
+                    <li key={idx}>{strength}</li>
+                  ),
+                )}
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold text-red-700 mb-2">Areas for Improvement</h3>
+              <h3 className="font-semibold text-red-700 mb-2">
+                Areas for Improvement
+              </h3>
               <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                {finalEvaluation.detailedFeedback.weaknesses.map((weakness, idx) => (
-                  <li key={idx}>{weakness}</li>
-                ))}
+                {finalEvaluation.detailedFeedback.weaknesses.map(
+                  (weakness, idx) => (
+                    <li key={idx}>{weakness}</li>
+                  ),
+                )}
               </ul>
             </div>
           </div>
@@ -264,7 +282,9 @@ export default function InterviewReportPage() {
 
           {finalEvaluation.standoutMoments.length > 0 && (
             <div>
-              <h3 className="font-semibold text-blue-700 mb-2">Standout Moments</h3>
+              <h3 className="font-semibold text-blue-700 mb-2">
+                Standout Moments
+              </h3>
               <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
                 {finalEvaluation.standoutMoments.map((moment, idx) => (
                   <li key={idx}>{moment}</li>
@@ -278,14 +298,19 @@ export default function InterviewReportPage() {
       {/* Interview Responses */}
       <section className="mb-8 bg-white border border-gray-200 rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold text-gray-800">Interview Responses</h2>
+          <h2 className="text-2xl font-semibold text-gray-800">
+            Interview Responses
+          </h2>
           {averageScore > 0 && (
             <p className="text-sm text-gray-600">
-              Average Score: <span className="font-bold text-blue-600">{averageScore.toFixed(1)}/10</span>
+              Average Score:{' '}
+              <span className="font-bold text-blue-600">
+                {averageScore.toFixed(1)}/10
+              </span>
             </p>
           )}
         </div>
-        
+
         {responses.length === 0 ? (
           <p className="text-gray-500 italic">No interview responses found.</p>
         ) : (
@@ -293,42 +318,58 @@ export default function InterviewReportPage() {
             {responses.map((item, idx) => (
               <div key={idx} className="border-l-4 border-blue-200 pl-6 pb-6">
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="font-medium text-gray-800 text-lg">Question {idx + 1}</h3>
+                  <h3 className="font-medium text-gray-800 text-lg">
+                    Question {idx + 1}
+                  </h3>
                   {item.evaluation && (
                     <div className="text-right">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                        item.evaluation.score >= 7 ? 'bg-green-100 text-green-800' :
-                        item.evaluation.score >= 5 ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
+                      <span
+                        className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                          item.evaluation.score >= 7
+                            ? 'bg-green-100 text-green-800'
+                            : item.evaluation.score >= 5
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
                         {item.evaluation.score}/10
                       </span>
                     </div>
                   )}
                 </div>
-                
-                <p className="text-gray-700 mb-3 font-medium">{item.question}</p>
-                
+
+                <p className="text-gray-700 mb-3 font-medium">
+                  {item.question}
+                </p>
+
                 <div className="bg-gray-50 rounded-lg p-4 mb-3">
                   <p className="text-gray-800">
                     {item.answer || (
-                      <span className="italic text-gray-400">No answer provided</span>
+                      <span className="italic text-gray-400">
+                        No answer provided
+                      </span>
                     )}
                   </p>
                 </div>
 
                 {item.evaluation && (
                   <div className="bg-blue-50 rounded-lg p-4">
-                    <h4 className="font-medium text-blue-800 mb-2">AI Feedback</h4>
-                    <p className="text-sm text-blue-700 mb-2">{item.evaluation.feedback}</p>
+                    <h4 className="font-medium text-blue-800 mb-2">
+                      AI Feedback
+                    </h4>
+                    <p className="text-sm text-blue-700 mb-2">
+                      {item.evaluation.feedback}
+                    </p>
                     {item.evaluation.strengths.length > 0 && (
                       <p className="text-xs text-green-600">
-                        <span className="font-medium">Strengths:</span> {item.evaluation.strengths.join(', ')}
+                        <span className="font-medium">Strengths:</span>{' '}
+                        {item.evaluation.strengths.join(', ')}
                       </p>
                     )}
                     {item.evaluation.improvements.length > 0 && (
                       <p className="text-xs text-orange-600">
-                        <span className="font-medium">Improvements:</span> {item.evaluation.improvements.join(', ')}
+                        <span className="font-medium">Improvements:</span>{' '}
+                        {item.evaluation.improvements.join(', ')}
                       </p>
                     )}
                   </div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@vercel/postgres';
+import { executeWithRetry } from '@/lib/db-retry';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -9,14 +10,16 @@ export async function POST(req: NextRequest) {
     const { candidateId, jobProfileId } = await req.json();
 
     // Get job profile for context
-    const { rows: jobRows } = await db.sql`
+    const { rows: jobRows } = await executeWithRetry(
+      () => db.sql`
       SELECT 
         id, title, description, department, location, type, salary, questions,
         created_at AS "createdAt"
       FROM jobs 
       WHERE id = ${jobProfileId};
-    `;
-    
+    `,
+    );
+
     if (jobRows.length === 0) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
@@ -24,16 +27,18 @@ export async function POST(req: NextRequest) {
     const jobProfile = jobRows[0];
 
     // Get candidate resume for context
-    const { rows: candidateRows } = await db.sql`
+    const { rows: candidateRows } = await executeWithRetry(
+      () => db.sql`
       SELECT resume FROM candidates WHERE id = ${candidateId};
-    `;
+    `,
+    );
 
     let candidateContext = '';
     if (candidateRows.length > 0 && candidateRows[0].resume) {
       try {
         const resumeBuffer = Buffer.from(candidateRows[0].resume, 'base64');
         const isPDF = resumeBuffer.slice(0, 4).toString() === '%PDF';
-        
+
         if (!isPDF) {
           candidateContext = resumeBuffer.toString('utf8').substring(0, 1000);
         }
@@ -49,9 +54,13 @@ export async function POST(req: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: `You are starting a technical interview for the position: ${jobProfile.title}.
+          content: `You are starting a technical interview for the position: ${
+            jobProfile.title
+          }.
           
-          Job Description: ${jobProfile.description || 'No specific description provided'}
+          Job Description: ${
+            jobProfile.description || 'No specific description provided'
+          }
           Department: ${jobProfile.department || 'Not specified'}
           Location: ${jobProfile.location || 'Not specified'}
           
@@ -65,23 +74,28 @@ export async function POST(req: NextRequest) {
           {
             "question": "Your opening interview question here",
             "type": "opening"
-          }`
+          }`,
         },
         {
           role: 'user',
           content: `Job Title: ${jobProfile.title}
           
-          ${candidateContext ? `Brief candidate background: ${candidateContext}` : ''}
+          ${
+            candidateContext
+              ? `Brief candidate background: ${candidateContext}`
+              : ''
+          }
           
-          Generate the opening question for this interview.`
-        }
+          Generate the opening question for this interview.`,
+        },
       ],
-      response_format: { type: 'json_object' }
+      response_format: { type: 'json_object' },
     });
 
-    const initialQuestionText = initialQuestionResponse.choices[0]?.message?.content || '{}';
+    const initialQuestionText =
+      initialQuestionResponse.choices[0]?.message?.content || '{}';
     let initialQuestion;
-    
+
     try {
       const questionData = JSON.parse(initialQuestionText);
       initialQuestion = questionData.question;
@@ -91,7 +105,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Initialize interview record with empty responses
-    await db.sql`
+    await executeWithRetry(
+      () => db.sql`
       INSERT INTO interviews (candidate_id, responses)
       VALUES (
         ${candidateId},
@@ -101,7 +116,8 @@ export async function POST(req: NextRequest) {
       SET
         responses = '[]'::jsonb,
         updated_at = now();
-    `;
+    `,
+    );
 
     return NextResponse.json({
       initialQuestion,
@@ -109,15 +125,14 @@ export async function POST(req: NextRequest) {
       maxQuestions: 8,
       jobProfile: {
         title: jobProfile.title,
-        description: jobProfile.description
-      }
+        description: jobProfile.description,
+      },
     });
-
   } catch (error) {
     console.error('[START_INTERVIEW_ERROR]', error);
     return NextResponse.json(
       { error: 'Failed to start AI interview' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
