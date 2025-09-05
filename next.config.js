@@ -6,6 +6,10 @@ const nextConfig = {
   //     'g4yqcv8qdhf169fk.public.blob.vercel-storage.com',
   //   ],
   // },
+  // webpack: (config, { isServer }) => {
+  //   // No longer needed since pdf-parse was removed
+  //   return config;
+  // },
 };
 
 module.exports = nextConfig;

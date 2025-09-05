@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@vercel/postgres';
+import { executeWithRetry } from '@/lib/db-retry';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -14,11 +15,13 @@ export async function GET(
   console.log('candidateId', candidateId);
   try {
     // 1) Load stored responses from candidates table
-     const { rows } = await db.sql`
+    const { rows } = await executeWithRetry(
+      () => db.sql`
       SELECT responses
       FROM interviews
       WHERE candidate_id = ${candidateId}
-    `;
+    `,
+    );
     console.log(JSON.stringify(rows));
     if (rows.length === 0) {
       return NextResponse.json(

@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@vercel/postgres';
+import { executeWithRetry } from '@/lib/db-retry';
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,7 +24,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 2) Ensure users table exists
-    await db.sql`
+    await executeWithRetry(
+      () => db.sql`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         first_name TEXT NOT NULL,
@@ -33,10 +35,12 @@ export async function POST(req: NextRequest) {
         password   TEXT NOT NULL,
         created_at TIMESTAMPTZ DEFAULT now()
       );
-    `;
+    `,
+    );
 
     // 3) Insert new user
-    const { rows } = await db.sql`
+    const { rows } = await executeWithRetry(
+      () => db.sql`
       INSERT INTO users (first_name, last_name, email, phone, password)
       VALUES (
         ${firstName},
@@ -52,7 +56,8 @@ export async function POST(req: NextRequest) {
         email,
         phone,
         created_at  AS "createdAt";
-    `;
+    `,
+    );
 
     const user = rows[0];
     return NextResponse.json({ user }, { status: 201 });

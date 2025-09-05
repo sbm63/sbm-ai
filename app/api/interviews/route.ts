@@ -2,6 +2,46 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@vercel/postgres';
+import { executeWithRetry } from '@/lib/db-retry';
+
+export async function GET(req: NextRequest) {
+  const candidateId = req.headers.get('candidate-id');
+
+  if (!candidateId) {
+    return NextResponse.json(
+      { error: 'candidate-id header is required' },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const { rows } = await executeWithRetry(
+      () => db.sql`
+      SELECT 
+        id,
+        candidate_id AS "candidateId",
+        responses,
+        created_at AS "createdAt",
+        updated_at AS "updatedAt"
+      FROM interviews 
+      WHERE candidate_id = ${candidateId};
+    `,
+    );
+
+    if (rows.length === 0) {
+      return NextResponse.json({ interview: null }, { status: 200 });
+    }
+
+    const interview = rows[0];
+    return NextResponse.json({ interview }, { status: 200 });
+  } catch (err) {
+    console.error('[GET_INTERVIEW]', err);
+    return NextResponse.json(
+      { error: 'Failed to retrieve interview' },
+      { status: 500 },
+    );
+  }
+}
 
 export async function POST(req: NextRequest) {
   const { candidateId, userResponse } = (await req.json()) as {
@@ -11,7 +51,8 @@ export async function POST(req: NextRequest) {
 
   try {
     // 1) Ensure table exists, with a UNIQUE constraint on candidate_id
-    await db.sql`
+    await executeWithRetry(
+      () => db.sql`
       CREATE TABLE IF NOT EXISTS interviews (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         candidate_id UUID NOT NULL REFERENCES candidates(id),
@@ -20,10 +61,12 @@ export async function POST(req: NextRequest) {
         updated_at TIMESTAMPTZ DEFAULT now(),
         UNIQUE(candidate_id)
       );
-    `;
+    `,
+    );
 
     // 2) Upsert: insert or update by candidate_id
-    const { rows } = await db.sql`
+    const { rows } = await executeWithRetry(
+      () => db.sql`
       INSERT INTO interviews (candidate_id, responses)
       VALUES (
         ${candidateId},
@@ -39,7 +82,8 @@ export async function POST(req: NextRequest) {
         responses         AS "userResponse",
         created_at        AS "createdAt",
         updated_at        AS "updatedAt";
-    `;
+    `,
+    );
 
     const interview = rows[0];
     return NextResponse.json({ interview }, { status: 200 });

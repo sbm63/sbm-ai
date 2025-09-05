@@ -33,16 +33,13 @@ export default function HomePage() {
               make data-driven hiring decisions.
             </p>
 
-            <div className="flex flex-wrap items-center gap-x-3 font-medium text-sm">
-              <NavLink
-                href="/candidates"
-                className="px-5 py-2 rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-90 shadow-md"
-              >
+            <div className="flex flex-wrap items-center gap-4 font-medium">
+              <NavLink href="/candidates" className="btn-primary">
                 Start Screening Candidates
               </NavLink>
               <NavLink
                 href="/select-role"
-                className="px-5 py-2 rounded-lg text-gray-700 border hover:bg-gray-50 shadow-sm"
+                className="btn-secondary"
                 scroll={false}
               >
                 Book a Demo
