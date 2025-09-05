@@ -32,7 +32,6 @@ export async function POST(req: NextRequest) {
 
     // Extract candidate info using OpenAI native PDF processing
     let completion;
-    let candidateInfo;
 
     try {
       // Use OpenAI's native PDF processing with Files API (2025 feature)
