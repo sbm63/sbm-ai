@@ -114,7 +114,7 @@ Return ONLY valid JSON with this structure:
 
           // Clean up the uploaded file
           try {
-            await openai.files.del(file.id);
+            await openai.files.delete(file.id);
             console.log('🗑️ Temporary file cleaned up');
           } catch (cleanupError) {
             console.warn('⚠️ Failed to cleanup temporary file:', cleanupError);
