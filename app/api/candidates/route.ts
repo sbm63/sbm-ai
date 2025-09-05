@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const isSmartCreate = url.searchParams.get('smart') === 'true';
-    
+
     const formData = await req.formData();
     const resumeFile = formData.get('resume');
 
@@ -67,127 +67,169 @@ export async function POST(req: NextRequest) {
       console.log('📄 File received:', {
         name: resumeFile.name,
         size: `${(resumeFile.size / 1024).toFixed(1)}KB`,
-        type: resumeFile.type
+        type: resumeFile.type,
       });
 
-      // Test database connection and ensure table exists
-      try {
-        await db.sql`SELECT 1 as test`;
-        console.log('✅ Database connection successful');
-        
-        // Create table if it doesn't exist
-        await db.sql`
-          CREATE TABLE IF NOT EXISTS candidates (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            first_name TEXT NOT NULL,
-            last_name  TEXT NOT NULL,
-            email      TEXT NOT NULL,
-            phone      TEXT,
-            resume     TEXT NOT NULL,
-            resume_file_name TEXT NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT now()
+      // Test database connection with retries and ensure table exists
+      let dbReady = false;
+      let lastError = null;
+
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`🔄 Database connection attempt ${attempt}/3...`);
+          await db.sql`SELECT 1 as test`;
+          console.log('✅ Database connection successful');
+
+          // Create table if it doesn't exist
+          await db.sql`
+            CREATE TABLE IF NOT EXISTS candidates (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              first_name TEXT NOT NULL,
+              last_name  TEXT NOT NULL,
+              email      TEXT NOT NULL,
+              phone      TEXT,
+              resume     TEXT NOT NULL,
+              resume_file_name TEXT NOT NULL,
+              created_at TIMESTAMPTZ DEFAULT now()
+            );
+          `;
+          console.log('✅ Candidates table ready');
+          dbReady = true;
+          break;
+        } catch (dbError: any) {
+          lastError = dbError;
+          console.error(
+            `❌ Database attempt ${attempt} failed:`,
+            dbError.message,
           );
-        `;
-        console.log('✅ Candidates table ready');
-      } catch (dbError: any) {
-        console.error('❌ Database setup failed:', dbError.message);
+
+          if (attempt < 3) {
+            console.log(`⏳ Waiting 2 seconds before retry...`);
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          }
+        }
+      }
+
+      if (!dbReady) {
+        console.error('❌ All database connection attempts failed');
         return NextResponse.json(
-          { error: 'Database setup failed', details: dbError.message },
-          { status: 500 }
+          {
+            error: 'Database connection failed after 3 attempts',
+            details: lastError?.message,
+            suggestions: [
+              'Check if your database is active and not sleeping',
+              'Verify your POSTGRES_URL environment variable is correct',
+              'Ensure your database plan allows connections',
+              'Try again in a few minutes if this is a temporary issue',
+            ],
+          },
+          { status: 500 },
         );
       }
 
-      // Convert PDF to buffer and try different text extraction approaches
+      // Convert PDF to buffer for processing
       const buffer = Buffer.from(await resumeFile.arrayBuffer());
       const resumeBase64 = buffer.toString('base64');
-      
-      console.log('📄 Attempting advanced PDF text extraction');
-      
-      // Try multiple encoding approaches to extract text
-      let extractedText = '';
-      
-      // Method 1: Try UTF-8 extraction
-      try {
-        const utf8String = buffer.toString('utf8');
-        const utf8Matches = utf8String.match(/[a-zA-Z0-9@._-]+/g);
-        if (utf8Matches) {
-          extractedText += utf8Matches.join(' ') + ' ';
-        }
-      } catch (e) {
-        console.log('UTF-8 extraction failed');
-      }
-      
-      // Method 2: ASCII extraction with better filtering
-      const asciiString = buffer.toString('ascii');
-      const readableChars = asciiString.match(/[a-zA-Z0-9@._\-\s]{2,}/g);
-      if (readableChars) {
-        extractedText += readableChars.join(' ') + ' ';
-      }
-      
-      // Method 3: Look for specific patterns in binary data
-      const binaryString = buffer.toString('binary');
-      
-      // Extract email patterns
-      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-      const emails = binaryString.match(emailRegex);
-      if (emails) {
-        extractedText += emails.join(' ') + ' ';
-      }
-      
-      // Extract phone patterns
-      const phoneRegex = /[\+]?[1-9]?[\d\s\-\(\)]{7,15}/g;
-      const phones = binaryString.match(phoneRegex);
-      if (phones) {
-        extractedText += phones.filter(p => /\d{3,}/.test(p)).join(' ') + ' ';
-      }
-      
-      // Method 4: Extract words from PDF objects
-      const wordRegex = /\b[A-Za-z]{2,}\b/g;
-      const words = binaryString.match(wordRegex);
-      if (words) {
-        // Filter meaningful words (not PDF commands)
-        const meaningfulWords = words.filter(word => 
-          word.length > 2 && 
-          word.length < 50 && 
-          !/^(obj|endobj|stream|endstream|xref|trailer|startxref|PDF)$/i.test(word)
-        );
-        extractedText += meaningfulWords.slice(0, 100).join(' ') + ' ';
-      }
-      
-      // Clean and normalize text
-      extractedText = extractedText
-        .replace(/\s+/g, ' ')
-        .replace(/[^\w\s@._-]/g, ' ')
-        .trim();
-      
-      console.log('📄 Extracted text length:', extractedText.length);
-      console.log('📄 Sample extracted text:', extractedText.substring(0, 500));
-      
-      // Check if extraction was successful enough
-      const hasEmail = /@/.test(extractedText);
-      const hasWords = extractedText.split(' ').filter(w => w.length > 2).length > 5;
-      
-      if (!hasEmail && !hasWords) {
-        console.log('❌ Text extraction failed, falling back to manual entry mode');
-        return NextResponse.json(
-          { 
-            error: 'Unable to automatically extract information from this PDF. Please use the manual "Create Candidate" option instead.',
-            suggestion: 'The PDF format is not compatible with automatic extraction. You can manually create the candidate by going to "New Candidate" and entering the information yourself.',
-            fileName: resumeFile.name
-          },
-          { status: 400 }
-        );
-      }
-      
-      // Use OpenAI with enhanced prompting for better extraction
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        max_tokens: 1000,
-        temperature: 0,
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert resume parser. Extract candidate information from the provided text that was extracted from a PDF resume.
+
+      // Check if it's a PDF
+      const isPDF = buffer.slice(0, 4).toString() === '%PDF';
+
+      console.log('📄 Processing file:', {
+        fileName: resumeFile.name,
+        isPDF,
+        size: `${(buffer.length / 1024).toFixed(1)}KB`,
+      });
+
+      // Use OpenAI's native PDF processing (same as validation API)
+      let candidateInfo;
+
+      if (isPDF) {
+        try {
+          // Upload PDF file to OpenAI
+          console.log('📤 Uploading PDF to OpenAI Files API...');
+          const file = await openai.files.create({
+            file: new File([buffer], resumeFile.name, {
+              type: 'application/pdf',
+            }),
+            purpose: 'assistants',
+          });
+
+          console.log('✅ File uploaded successfully:', file.id);
+
+          // Process the PDF using GPT-4o with native PDF support
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            temperature: 0.1,
+            messages: [
+              {
+                role: 'system',
+                content: `You are an expert at analyzing resumes. Extract candidate information from the provided PDF document.
+                
+                Return ONLY valid JSON with this exact structure:
+                {
+                  "firstName": "first name from resume",
+                  "lastName": "last name from resume", 
+                  "email": "email address from resume",
+                  "phone": "phone number from resume"
+                }
+                
+                IMPORTANT:
+                - firstName, lastName, and email are REQUIRED and must not be empty
+                - If phone is not found, use empty string
+                - Look carefully for contact information in headers, footers, and contact sections
+                - Be precise with name extraction (avoid titles like Mr., Dr., etc.)`,
+              },
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: `Please analyze this resume PDF (${resumeFile.name}) and extract the candidate information:`,
+                  },
+                  {
+                    type: 'file',
+                    file: {
+                      file_id: file.id,
+                    },
+                  },
+                ],
+              },
+            ],
+            response_format: { type: 'json_object' },
+          });
+
+          // Clean up the uploaded file
+          try {
+            await openai.files.del(file.id);
+            console.log('🗑️ Temporary file cleaned up');
+          } catch (cleanupError) {
+            console.warn('⚠️ Failed to cleanup temporary file:', cleanupError);
+          }
+
+          const raw = completion.choices[0]?.message?.content ?? '{}';
+          console.log('🤖 AI response:', raw);
+          candidateInfo = JSON.parse(raw);
+        } catch (fileError: any) {
+          console.warn(
+            '⚠️ OpenAI Files API failed, falling back to text extraction:',
+            fileError.message,
+          );
+
+          // Fallback to simple text analysis if Files API fails
+          const pdfText = buffer
+            .toString('utf8')
+            .replace(/[^\x20-\x7E\n\r]/g, ' ')
+            .trim();
+          const words = pdfText.split(/\s+/).filter((word) => word.length > 2);
+          const extractedText = words.slice(0, 1000).join(' '); // Limit to prevent token issues
+
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            temperature: 0.1,
+            messages: [
+              {
+                role: 'system',
+                content: `You are an expert resume parser. Extract candidate information from the provided text that was extracted from a PDF resume.
 
 EXTRACTION GUIDELINES:
 1. Names: Look for capitalized words that could be first/last names, often at the beginning
@@ -204,35 +246,81 @@ Return JSON format:
   "phone": "phone number or empty string"
 }
 
-IMPORTANT: Only return the JSON object, no other text.`
-          },
-          {
-            role: 'user',
-            content: `Resume filename: ${resumeFile.name}
+IMPORTANT: Only return the JSON object, no other text.`,
+              },
+              {
+                role: 'user',
+                content: `Resume filename: ${resumeFile.name}
 
 Extracted text: "${extractedText}"
 
-Extract the candidate's firstName, lastName, email, and phone number. If the extracted text is fragmented, try to infer information from patterns and the filename.`
-          }
-        ],
-        response_format: { type: 'json_object' }
-      });
+Extract the candidate's firstName, lastName, email, and phone number. If the extracted text is fragmented, try to infer information from patterns and the filename.`,
+              },
+            ],
+            response_format: { type: 'json_object' },
+          });
 
-      const raw = completion.choices[0]?.message?.content ?? '{}';
-      console.log('🤖 AI response:', raw);
-      const candidateInfo = JSON.parse(raw);
-      
-      if (!candidateInfo.firstName || !candidateInfo.lastName || !candidateInfo.email) {
+          const raw = completion.choices[0]?.message?.content ?? '{}';
+          console.log('🤖 Fallback AI response:', raw);
+          candidateInfo = JSON.parse(raw);
+        }
+      } else {
+        // Handle non-PDF files (existing text processing logic)
+        const resumeText = buffer.toString('utf8');
+
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          temperature: 0.1,
+          messages: [
+            {
+              role: 'system',
+              content: `You are an expert at analyzing resumes. Extract candidate information from the provided text document.
+              
+              Return ONLY valid JSON with this exact structure:
+              {
+                "firstName": "first name from resume",
+                "lastName": "last name from resume", 
+                "email": "email address from resume",
+                "phone": "phone number from resume"
+              }
+              
+              IMPORTANT:
+              - firstName, lastName, and email are REQUIRED and must not be empty
+              - If phone is not found, use empty string
+              - Look carefully for contact information`,
+            },
+            {
+              role: 'user',
+              content: `Please analyze this resume and extract the candidate information:\n\n${resumeText.substring(
+                0,
+                8000,
+              )}`,
+            },
+          ],
+          response_format: { type: 'json_object' },
+        });
+
+        const raw = completion.choices[0]?.message?.content ?? '{}';
+        console.log('🤖 Text file AI response:', raw);
+        candidateInfo = JSON.parse(raw);
+      }
+
+      if (
+        !candidateInfo.firstName ||
+        !candidateInfo.lastName ||
+        !candidateInfo.email
+      ) {
         console.log('❌ Missing required fields:', candidateInfo);
         return NextResponse.json(
-          { 
-            error: 'Could not extract required candidate information from resume. Please ensure the resume contains clear name and email information.',
-            aiResponse: candidateInfo
+          {
+            error:
+              'Could not extract required candidate information from resume. Please ensure the resume contains clear name and email information.',
+            aiResponse: candidateInfo,
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
-      
+
       // Create candidate with extracted info
       const { rows } = await db.sql`
         INSERT INTO candidates (
@@ -249,12 +337,12 @@ Extract the candidate's firstName, lastName, email, and phone number. If the ext
       `;
 
       console.log('✅ Smart candidate created:', rows[0]);
-      
+
       return NextResponse.json({
         success: true,
         message: 'Candidate created successfully from resume',
         candidate: rows[0],
-        extractedInfo: candidateInfo
+        extractedInfo: candidateInfo,
       });
     }
 

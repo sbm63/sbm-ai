@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@vercel/postgres';
+import { executeWithRetry } from '@/lib/db-retry';
 import { randomUUID } from 'crypto';
 
 export async function POST(req: NextRequest) {
@@ -17,7 +18,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { rows } = await db.sql`
+    const { rows } = await executeWithRetry(
+      () => db.sql`
       SELECT
         id,
         first_name AS "firstName",
@@ -27,7 +29,8 @@ export async function POST(req: NextRequest) {
         password
       FROM users
       WHERE email = ${email}
-    `;
+    `,
+    );
     if (rows.length === 0) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
