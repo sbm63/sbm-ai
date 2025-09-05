@@ -122,7 +122,7 @@ Please provide a comprehensive final evaluation of this interview.`,
 
     const finalEvaluationText =
       finalEvaluationResponse.choices[0]?.message?.content || '{}';
-    let finalEvaluation;
+    let finalEvaluation: any;
 
     try {
       finalEvaluation = JSON.parse(finalEvaluationText);
