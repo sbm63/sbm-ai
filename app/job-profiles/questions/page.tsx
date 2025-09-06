@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Plus, Trash2, HelpCircle, FileText, ChevronDown, Save, ArrowLeft } from 'lucide-react';
 
 type QItem = { question: string; expectedAnswer?: string };
 const newRow = (): QItem => ({ question: '', expectedAnswer: '' });
@@ -107,57 +108,88 @@ export default function JobQuestionsPage() {
   };
 
   return (
-    <section className="custom-screen py-6">
-      {/* Header */}
-      <div className="mb-4">
-        <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
-          Add Questions for: {loading ? 'Loading…' : jobTitle || 'Untitled Job'}
-        </h1>
+    <div className="custom-screen py-8">
+      {/* Page Header */}
+      <div className="page-header">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              onClick={() => router.push('/job-profiles')}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+              title="Back to Job Profiles"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h1 className="page-title">
+              Interview Questions
+            </h1>
+          </div>
+          <p className="page-subtitle">
+            Manage interview questions for{' '}
+            <span className="font-medium text-indigo-600">
+              {loading ? 'Loading…' : jobTitle || 'Untitled Job'}
+            </span>
+          </p>
+        </div>
+      </div>
 
-        {/* Existing Q&A (minimal accordion) */}
-        <div className="mt-3">
-          <h2 className="text-base font-medium text-gray-900">
-            Existing Questions & Answers - {loading ? '—' : existingCount}
-          </h2>
+      {/* Existing Questions Card */}
+      <div className="card mb-6">
+        <div className="card-body">
+          <div className="flex items-center gap-2 mb-4">
+            <HelpCircle className="w-5 h-5 text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">
+              Existing Questions
+            </h2>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+              {loading ? '—' : existingCount} question{existingCount !== 1 ? 's' : ''}
+            </span>
+          </div>
 
           {loading ? (
-            <div className="mt-2 text-sm text-gray-500">Loading…</div>
+            <div className="flex items-center justify-center py-8">
+              <div className="loading-spinner mr-2"></div>
+              <span className="text-gray-600">Loading questions...</span>
+            </div>
           ) : existing.length === 0 ? (
-            <div className="mt-2 text-sm text-gray-500">
-              No questions added yet.
+            <div className="text-center py-8">
+              <HelpCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-600 mb-1">No questions added yet</p>
+              <p className="text-sm text-gray-500">Add your first interview question below</p>
             </div>
           ) : (
-            <div className="mt-2 rounded-md divide-y divide-gray-400">
+            <div className="space-y-2">
               {existing.map((item, idx) => (
-                <details key={idx} className="group">
-                  <summary className="list-none m-0 py-2.5 px-3 flex items-start justify-between cursor-pointer hover:bg-gray-50">
-                    <span className="text-sm text-gray-900 pr-3">
-                      {idx + 1} - {item.question}
-                    </span>
-                    <svg
-                      className="ml-3 h-4 w-4 text-gray-400 transition-transform group-open:rotate-180"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.25 8.29a.75.75 0 01-.02-1.08z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </summary>
-                  <div className="px-3 pb-3 text-sm">
-                    {item.expectedAnswer?.trim() ? (
-                      <div className="text-gray-700 whitespace-pre-wrap">
-                        <span className="font-medium text-gray-900">
-                          Expected Answer:
+                <details key={idx} className="group border border-gray-200 rounded-lg overflow-hidden">
+                  <summary className="list-none cursor-pointer p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-sm font-medium">
+                          {idx + 1}
                         </span>
-                        <div className="mt-1">{item.expectedAnswer}</div>
+                        <span className="text-gray-900 font-medium">
+                          {item.question}
+                        </span>
+                      </div>
+                      <ChevronDown className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" />
+                    </div>
+                  </summary>
+                  <div className="px-4 pb-4 border-t border-gray-100 bg-gray-50">
+                    {item.expectedAnswer?.trim() ? (
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="w-4 h-4 text-gray-600" />
+                          <span className="text-sm font-medium text-gray-900">
+                            Expected Answer:
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-700 bg-white p-3 rounded border whitespace-pre-wrap">
+                          {item.expectedAnswer}
+                        </div>
                       </div>
                     ) : (
-                      <div className="text-gray-500">
-                        No expected answer saved.
+                      <div className="mt-3 text-sm text-gray-500 italic">
+                        No expected answer provided
                       </div>
                     )}
                   </div>
@@ -168,105 +200,161 @@ export default function JobQuestionsPage() {
         </div>
       </div>
 
-      {/* Mode (compact segmented switch) */}
-      <div className="mb-3">
-        <div className="inline-flex rounded-md border border-gray-200 overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setMode('append')}
-            className={`px-3 py-1.5 text-sm border-r border-gray-200 ${
-              mode === 'append'
-                ? 'bg-indigo-600 text-white'
-                : 'hover:bg-gray-50'
-            }`}
-            aria-pressed={mode === 'append'}
-          >
-            Append
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('replace')}
-            className={`px-3 py-1.5 text-sm ${
-              mode === 'replace'
-                ? 'bg-indigo-600 text-white'
-                : 'hover:bg-gray-50'
-            }`}
-            aria-pressed={mode === 'replace'}
-          >
-            Replace all
-          </button>
-        </div>
-      </div>
+      {/* Add Questions Card */}
+      <div className="card">
+        <div className="card-body">
+          <div className="flex items-center gap-2 mb-6">
+            <Plus className="w-5 h-5 text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Add New Questions</h2>
+          </div>
 
-      {/* Add form (compact, no card bg) */}
-      <div className="space-y-3">
-        {rows.map((r, idx) => (
-          <div
-            key={idx}
-            className="rounded-md border border-gray-200 p-3 md:p-4"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-              <div className="md:col-span-5">
-                <label className="block text-[11px] text-gray-500 mb-1">
-                  Question
-                </label>
-                <input
-                  className="w-full border border-gray-300 rounded-md px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="e.g., Explain debouncing vs throttling"
-                  value={r.question}
-                  onChange={(e) => updateRow(idx, 'question', e.target.value)}
-                />
+          {/* Mode Selection */}
+          <div className="mb-6">
+            <label className="form-label mb-3">Question Mode</label>
+            <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden bg-white">
+              <button
+                type="button"
+                onClick={() => setMode('append')}
+                className={`px-4 py-2 text-sm font-medium border-r border-gray-300 transition-colors ${
+                  mode === 'append'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Append to existing
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('replace')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  mode === 'replace'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Replace all questions
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {mode === 'append' 
+                ? 'New questions will be added to existing ones'
+                : 'All existing questions will be replaced with new ones'
+              }
+            </p>
+          </div>
+
+          {/* Question Input Forms */}
+          <div className="space-y-4">
+            {rows.map((r, idx) => (
+              <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-sm font-medium">
+                      {idx + 1}
+                    </span>
+                    <span className="text-sm font-medium text-gray-700">
+                      Question {idx + 1}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeRow(idx)}
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-full text-red-600 hover:bg-red-100 transition-colors"
+                    title="Remove this question"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div>
+                    <label className="form-label">
+                      <HelpCircle className="w-4 h-4 inline mr-1" />
+                      Interview Question
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g., Explain the difference between debouncing and throttling"
+                      value={r.question}
+                      onChange={(e) => updateRow(idx, 'question', e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">
+                      <FileText className="w-4 h-4 inline mr-1" />
+                      Expected Answer{' '}
+                      <span className="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <textarea
+                      className="form-input resize-none"
+                      rows={3}
+                      placeholder="Key points the candidate should cover in their answer..."
+                      value={r.expectedAnswer ?? ''}
+                      onChange={(e) =>
+                        updateRow(idx, 'expectedAnswer', e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
               </div>
+            ))}
+          </div>
 
-              <div className="md:col-span-6">
-                <label className="block text-[11px] text-gray-500 mb-1">
-                  Expected Answer (optional)
-                </label>
-                <textarea
-                  className="w-full border border-gray-300 rounded-md px-3 h-20 text-sm resize-none outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Key points the candidate should cover"
-                  value={r.expectedAnswer ?? ''}
-                  onChange={(e) =>
-                    updateRow(idx, 'expectedAnswer', e.target.value)
-                  }
-                />
-              </div>
-
-              <div className="md:col-span-1 flex md:justify-end md:items-center">
-                <button
-                  type="button"
-                  onClick={() => removeRow(idx)}
-                  className="inline-flex items-center justify-center h-9 w-9 text-sm border border-red-300 bg-red-100 rounded-md hover:bg-red-100"
-                  aria-label="Remove row"
-                  title="Remove this question"
+          {/* Error Message */}
+          {error && (
+            <div className="form-error bg-red-50 border border-red-200 rounded-lg p-3 mt-4">
+              <div className="flex items-center">
+                <svg
+                  className="w-5 h-5 text-red-400 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  ✕
-                </button>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                {error}
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          )}
 
-      {/* Actions */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
-          onClick={addRow}
-        >
-          + Add Row
-        </button>
-        <button
-          type="button"
-          disabled={saving}
-          className="px-4 py-1.5 text-sm rounded-md bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-60"
-          onClick={onSave}
-        >
-          {saving ? 'Saving…' : 'Save'}
-        </button>
-        {error ? <span className="text-red-600 text-sm">{error}</span> : null}
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-gray-200 mt-6">
+            <button
+              type="button"
+              onClick={addRow}
+              className="btn-secondary"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Another Question
+            </button>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving}
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? (
+                <div className="flex items-center">
+                  <div className="loading-spinner mr-2 h-4 w-4"></div>
+                  Saving...
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Questions
+                </div>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }

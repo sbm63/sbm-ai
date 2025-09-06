@@ -156,3 +156,95 @@ export async function PATCH(
     );
   }
 }
+
+// PUT /api/job-profiles/[id] - Update job profile
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const body = await req.json();
+    const { title, department, location, type, salary, description } = body;
+
+    if (!title || !department || !location || !type || !salary) {
+      return NextResponse.json(
+        { error: 'All fields are required' },
+        { status: 400 },
+      );
+    }
+
+    const { rows } = await executeWithRetry(() => {
+      return db.sql`
+        UPDATE jobs
+        SET 
+          title = ${title},
+          department = ${department},
+          location = ${location},
+          type = ${type},
+          salary = ${salary},
+          description = ${description || ''}
+        WHERE id = ${params.id}
+        RETURNING
+          id,
+          title,
+          department,
+          location,
+          type,
+          salary,
+          description
+      `;
+    });
+
+    if (rows.length === 0) {
+      return NextResponse.json(
+        { error: 'Job profile not found' },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ 
+      message: 'Job profile updated successfully',
+      job: rows[0] 
+    });
+  } catch (err) {
+    console.error('[UPDATE_JOB_PROFILE]', err);
+    return NextResponse.json(
+      { error: 'Failed to update job profile' },
+      { status: 500 },
+    );
+  }
+}
+
+// DELETE /api/job-profiles/[id] - Delete job profile
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const { rows } = await executeWithRetry(() => {
+      return db.sql`
+        DELETE FROM jobs
+        WHERE id = ${params.id}
+        RETURNING id, title
+      `;
+    });
+
+    if (rows.length === 0) {
+      return NextResponse.json(
+        { error: 'Job profile not found' },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ 
+      message: 'Job profile deleted successfully',
+      deletedJob: rows[0] 
+    });
+  } catch (err) {
+    console.error('[DELETE_JOB_PROFILE]', err);
+    return NextResponse.json(
+      { error: 'Failed to delete job profile' },
+      { status: 500 },
+    );
+  }
+}

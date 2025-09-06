@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Edit, Trash2 } from 'lucide-react';
 
 type Candidate = {
   id: string;
@@ -17,6 +18,9 @@ export default function CandidatesPage() {
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [candidateToDelete, setCandidateToDelete] = useState<Candidate | null>(null);
 
   useEffect(() => {
     fetch('/api/candidates')
@@ -29,6 +33,38 @@ export default function CandidatesPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const handleDeleteClick = (candidate: Candidate) => {
+    setCandidateToDelete(candidate);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!candidateToDelete) return;
+    
+    setDeleteLoading(candidateToDelete.id);
+    try {
+      const res = await fetch(`/api/candidates/${candidateToDelete.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!res.ok) throw new Error('Failed to delete candidate');
+      
+      // Remove candidate from local state
+      setCandidates(prev => prev.filter(c => c.id !== candidateToDelete.id));
+      setShowDeleteModal(false);
+      setCandidateToDelete(null);
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete candidate. Please try again.');
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
+  const handleEditClick = (candidateId: string) => {
+    router.push(`/candidates/create-candidate?edit=${candidateId}`);
+  };
 
   return (
     <div className="custom-screen py-8">
@@ -225,6 +261,25 @@ export default function CandidatesPage() {
                           </svg>
                           Report
                         </button>
+                        <button
+                          onClick={() => handleEditClick(cand.id)}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+                        >
+                          <Edit className="w-3 h-3 mr-1" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(cand)}
+                          disabled={deleteLoading === cand.id}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors duration-200 disabled:opacity-50"
+                        >
+                          {deleteLoading === cand.id ? (
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600 mr-1"></div>
+                          ) : (
+                            <Trash2 className="w-3 h-3 mr-1" />
+                          )}
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -232,6 +287,46 @@ export default function CandidatesPage() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && candidateToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+              <Trash2 className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
+              Delete Candidate
+            </h3>
+            <p className="text-gray-600 text-center mb-6">
+              Are you sure you want to delete <strong>{candidateToDelete.firstName} {candidateToDelete.lastName}</strong>? 
+              This action cannot be undone.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleteLoading !== null}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deleteLoading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Deleting...
+                  </div>
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

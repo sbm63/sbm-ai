@@ -8,8 +8,10 @@ import {
   Mic,
   MicOff,
   ArrowRight,
+  ArrowLeft,
   CheckCircle,
   AlertCircle,
+  Square,
 } from 'lucide-react';
 
 type QA = {
@@ -67,6 +69,8 @@ export default function OnboardingPage() {
     overallScore: 0,
   });
   const [lastEvaluation, setLastEvaluation] = useState<any>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
+  const [canNavigateBack, setCanNavigateBack] = useState(false);
 
   // Question selection
   const [aiSuggestedQuestion, setAiSuggestedQuestion] = useState<string>('');
@@ -229,6 +233,10 @@ export default function OnboardingPage() {
       setProgress(data.progress);
       setLastEvaluation(data.evaluation);
       setTranscript('');
+      
+      // Update navigation state
+      setCurrentQuestionIndex((prev) => prev + 1);
+      setCanNavigateBack(true);
 
       if (data.interviewComplete || !data.shouldContinue) {
         setInterviewComplete(true);
@@ -261,6 +269,41 @@ export default function OnboardingPage() {
     setCurrentQuestion(question);
     setShowQuestionSelection(false);
     setAiSuggestedQuestion('');
+  };
+
+  // Navigate to previous question
+  const goToPreviousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      const prevIndex = currentQuestionIndex - 1;
+      const prevQA = questionHistory[prevIndex];
+      
+      setCurrentQuestionIndex(prevIndex);
+      setCurrentQuestion(prevQA.question);
+      setTranscript(prevQA.answer);
+      setLastEvaluation(prevQA.evaluation);
+      setProgress((prev) => ({ ...prev, currentCount: prevIndex }));
+      
+      // Update navigation state
+      setCanNavigateBack(prevIndex > 0);
+    }
+  };
+
+  // Navigate to next question (existing functionality)
+  const goToNextQuestion = () => {
+    submitAnswer();
+  };
+
+  // Finish interview early
+  const finishInterview = async () => {
+    try {
+      setInterviewComplete(true);
+      // Redirect to final results
+      setTimeout(() => {
+        router.push(`/onboarding/reports?candidateId=${candidateId}`);
+      }, 1500);
+    } catch (error) {
+      console.error('Error finishing interview:', error);
+    }
   };
 
   return (
@@ -410,8 +453,13 @@ export default function OnboardingPage() {
             <div className="mb-6">
               <div className="flex justify-between text-sm text-gray-600 mb-2">
                 <span>
-                  Question {progress.currentCount + 1} of{' '}
+                  Question {currentQuestionIndex + 1} of{' '}
                   {progress.maxQuestions}
+                  {canNavigateBack && (
+                    <span className="ml-2 text-blue-600 text-xs">
+                      (You can navigate back)
+                    </span>
+                  )}
                 </span>
                 <span>Overall Score: {progress.overallScore}/10</span>
               </div>
@@ -466,10 +514,25 @@ export default function OnboardingPage() {
               />
             </div>
 
-            {/* Submit Button */}
-            <div className="flex justify-end">
+            {/* Navigation Controls */}
+            <div className="flex justify-between items-center">
+              {/* Previous Button */}
               <button
-                onClick={submitAnswer}
+                onClick={goToPreviousQuestion}
+                disabled={!canNavigateBack || evaluating}
+                className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition ${
+                  !canNavigateBack || evaluating
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-gray-600 text-white hover:bg-gray-500'
+                }`}
+              >
+                <ArrowLeft size={20} />
+                Previous
+              </button>
+
+              {/* Next/Submit Button */}
+              <button
+                onClick={goToNextQuestion}
                 disabled={!transcript.trim() || evaluating || audioActive}
                 className={`inline-flex items-center gap-2 px-8 py-3 rounded-lg font-medium transition ${
                   !transcript.trim() || evaluating || audioActive
@@ -484,7 +547,7 @@ export default function OnboardingPage() {
                   </>
                 ) : (
                   <>
-                    Submit Answer
+                    Next Question
                     <ArrowRight size={20} />
                   </>
                 )}
