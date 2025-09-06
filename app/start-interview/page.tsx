@@ -16,6 +16,9 @@ type Feedback = {
   strengths: string[];
   weaknesses: string[];
   recommendation: string;
+  experienceLevel?: string;
+  keySkills?: string[];
+  roleMatch?: string;
 };
 
 type JobProfile = {
@@ -490,8 +493,34 @@ export default function StartInterviewPage() {
                 </h2>
               </div>
               <div className="card-body">
+                {feedback.roleMatch && (
+                  <div className="mb-6">
+                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-4 ${
+                      feedback.roleMatch === 'excellent' ? 'bg-green-100 text-green-800' :
+                      feedback.roleMatch === 'good' ? 'bg-blue-100 text-blue-800' :
+                      feedback.roleMatch === 'fair' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                        feedback.roleMatch === 'excellent' ? 'bg-green-500' :
+                        feedback.roleMatch === 'good' ? 'bg-blue-500' :
+                        feedback.roleMatch === 'fair' ? 'bg-yellow-500' :
+                        'bg-red-500'
+                      }`}></span>
+                      {feedback.roleMatch.charAt(0).toUpperCase() + feedback.roleMatch.slice(1)} Role Match
+                    </div>
+                  </div>
+                )}
+
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-2">Summary</h3>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-semibold text-gray-900">Summary</h3>
+                    {feedback.experienceLevel && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                        {feedback.experienceLevel.charAt(0).toUpperCase() + feedback.experienceLevel.slice(1)} Level
+                      </span>
+                    )}
+                  </div>
                   <p className="text-gray-700">{feedback.summary}</p>
                 </div>
 
@@ -556,6 +585,19 @@ export default function StartInterviewPage() {
                     </ul>
                   </div>
                 </div>
+
+                {feedback.keySkills && feedback.keySkills.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="font-semibold text-gray-900 mb-3">Key Skills Identified</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {feedback.keySkills.map((skill, i) => (
+                        <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <h3 className="font-semibold text-blue-900 mb-2 flex items-center">
