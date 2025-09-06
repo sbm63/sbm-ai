@@ -11,7 +11,6 @@ import {
   ArrowLeft,
   CheckCircle,
   AlertCircle,
-  Square,
 } from 'lucide-react';
 
 type QA = {
@@ -294,17 +293,17 @@ export default function OnboardingPage() {
   };
 
   // Finish interview early
-  const finishInterview = async () => {
-    try {
-      setInterviewComplete(true);
-      // Redirect to final results
-      setTimeout(() => {
-        router.push(`/onboarding/reports?candidateId=${candidateId}`);
-      }, 1500);
-    } catch (error) {
-      console.error('Error finishing interview:', error);
-    }
-  };
+  // const finishInterview = async () => {
+  //   try {
+  //     setInterviewComplete(true);
+  //     // Redirect to final results
+  //     setTimeout(() => {
+  //       router.push(`/onboarding/reports?candidateId=${candidateId}`);
+  //     }, 1500);
+  //   } catch (error) {
+  //     console.error('Error finishing interview:', error);
+  //   }
+  // };
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-4 max-w-6xl mx-auto">

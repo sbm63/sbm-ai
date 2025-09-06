@@ -137,7 +137,7 @@ export default function LoginPage() {
           {/* Signup Link */}
           <div className="mt-8 pt-6 border-t border-gray-200">
             <p className="text-center text-sm text-gray-600 mb-4">
-              Don't have an account?
+              Don&apos;t have an account?
             </p>
             <button
               onClick={() => router.push('/signup')}
